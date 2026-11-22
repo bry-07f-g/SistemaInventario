@@ -7,6 +7,8 @@
   --color-exito: #2e7d32; /* Verde: confirmaciones y entradas */
   --color-fondo: #ffffff; /* Blanco predeterminado */
   --color-texto: #2b2b2b; /* Gris oscuro para leer cómodo */
+  --color-exito-suave: #e8f3e9; /* Verde muy claro: fondo de mensajes de éxito */
+  --color-peligro-suave: #fbe6e6; /* Rojo muy claro: fondo de mensajes de error */
   --color-fondo-pagina: #f4f1ee; /* Gris cálido muy claro: fondo detrás del cuadro */
 
   --sombra: 0 4px 16px rgba(63, 63, 63, 0.15); /* Sombra suave: da efecto de "levantado" */

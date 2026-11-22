@@ -221,3 +221,118 @@ body {
   background: var(--color-peligro);
   color: #fff;
 }
+
+/* ===== 8) Selector de pestañas (Ingresar / Despachar) ===== */
+.selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.selector__opcion {
+  padding: 8px 20px;
+  border: 2px solid var(--color-principal);
+  border-radius: var(--radio);
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.selector__opcion--activa {
+  background: var(--color-principal);
+  color: #fff;
+}
+
+/* ===== 9) Formularios ===== */
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+}
+
+/* Cada campo: etiqueta arriba y el cuadro de escribir debajo */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  padding: 8px 10px;
+  border: 2px solid #d9d4cf;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+  background: var(--color-fondo);
+}
+
+.campo textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Al hacer clic en un campo, se resalta en Persimmon */
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--color-principal);
+  box-shadow: 0 0 0 3px var(--color-principal-suave);
+}
+
+.formulario__radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  border: none;
+}
+
+.formulario__radios legend {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.vista-previa {
+  width: 96px;
+  height: 96px;
+  margin-top: 6px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+/* Botón principal: relleno Persimmon */
+.boton--principal {
+  align-self: flex-start;
+  padding: 10px 20px;
+  background: var(--color-principal);
+  color: #fff;
+  font-weight: 700;
+}
+
+.boton--principal:hover {
+  background: var(--color-principal);
+  filter: brightness(0.92); /* lo oscurece un poco al pasar el mouse */
+}
+
+/* ===== 10) Mensajes ===== */
+.mensaje {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: var(--radio);
+  font-weight: 600;
+}
+
+.mensaje--exito {
+  background: var(--color-exito-suave);
+  color: var(--color-exito);
+}
+
+.mensaje--error {
+  background: var(--color-peligro-suave);
+  color: var(--color-peligro);
+}

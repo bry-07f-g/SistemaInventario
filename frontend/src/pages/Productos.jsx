@@ -4,29 +4,8 @@ import { useState } from 'react'
 
 // Datos de EJEMPLO. Más adelante los reemplazaremos por los reales
 // que vengan de la base de datos a través del backend.
-const productosEjemplo = [
-  {
-    id: 1,
-    nombre: 'Silla de oficina',
-    cantidad: 12,
-    descripcion: 'Silla ergonómica con ruedas y espaldar ajustable.',
-    imagen: null, // null = todavía no tiene imagen
-  },
-  {
-    id: 2,
-    nombre: 'Resma de papel carta',
-    cantidad: 0,
-    descripcion: 'Paquete de 500 hojas tamaño carta.',
-    imagen: null,
-  },
-  {
-    id: 3,
-    nombre: 'Marcadores permanentes',
-    cantidad: 45,
-    descripcion: 'Caja de marcadores de colores surtidos.',
-    imagen: null,
-  },
-]
+import { useState } from 'react'
+import { productosEjemplo } from '../services/datosEjemplo.js'
 
 function Productos() {
   // Lista de productos que se muestra. Empieza con los de ejemplo.

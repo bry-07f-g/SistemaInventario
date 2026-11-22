@@ -5,8 +5,6 @@ import { useState } from 'react'
 import { productosEjemplo } from '../services/datosEjemplo.js'
 
 function Productos() {
-
-function Productos() {
   // Lista de productos que se muestra. Empieza con los de ejemplo.
   const [productos, setProductos] = useState(productosEjemplo)
 

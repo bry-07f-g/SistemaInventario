@@ -1,0 +1,12 @@
+/* Aquí se definen los colores una sola vez. Si luego quieres cambiar
+   uno, lo cambias aquí y se actualiza en toda la página. */
+:root {
+  --color-principal: #e45b11; /* Persimmon: bordes y partes principales */
+  --color-principal-suave: #fce9de; /* Versión clara del principal, para hover */
+  --color-peligro: #b50001; /* Blood Orange: eliminar, alertas, errores */
+  --color-exito: #2e7d32; /* Verde: confirmaciones y entradas */
+  --color-fondo: #ffffff; /* Blanco predeterminado */
+  --color-texto: #2b2b2b; /* Gris oscuro para leer cómodo */
+
+  --radio: 10px; /* Qué tan redondeadas van las esquinas */
+}

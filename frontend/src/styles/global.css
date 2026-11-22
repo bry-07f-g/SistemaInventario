@@ -1,0 +1,111 @@
+/* ===== 1) Reinicio básico =====
+   Quita los márgenes por defecto del navegador y hace que el ancho
+   de cada caja incluya su borde y relleno (más fácil de calcular). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== 2) Cuerpo de la página ===== */
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  line-height: 1.5;
+}
+
+/* ===== 3) Estructura general =====
+   El contenedor ocupa todo el alto de la pantalla y el centro crece,
+   así el footer siempre queda abajo aunque haya poco contenido. */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.contenido {
+  flex: 1;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.pagina__titulo {
+  color: var(--color-principal);
+  margin-bottom: 16px;
+}
+
+/* ===== 4) Header ===== */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* saludo a la izquierda, menú a la derecha */
+  flex-wrap: wrap; /* en pantallas pequeñas baja a otra línea */
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 3px solid var(--color-principal);
+}
+
+.header__saludo {
+  font-size: 1.4rem;
+  color: var(--color-principal);
+}
+
+.header__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header__link {
+  padding: 8px 16px;
+  border: 2px solid var(--color-principal);
+  border-radius: var(--radio);
+  color: var(--color-texto);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.header__link:hover {
+  background: var(--color-principal-suave);
+}
+
+/* "active" lo agrega NavLink al enlace de la página en la que estás */
+.header__link.active {
+  background: var(--color-principal);
+  color: #fff;
+}
+
+/* ===== 5) Footer ===== */
+.footer {
+  background-color: var(--color-texto);
+  padding: 16px 24px;
+  border-top: 2px solid var(--color-principal);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.footer p {
+  color: var(--color-fondo);
+}
+
+.footer a {
+  color: var(--color-fondo);
+  text-decoration: underline;
+}
+
+.footer a:hover {
+  color: var(--color-principal);
+}

@@ -336,3 +336,63 @@ body {
   background: var(--color-peligro-suave);
   color: var(--color-peligro);
 }
+
+/* ===== 11) Ayuda bajo un campo ===== */
+.campo__ayuda {
+  font-weight: 400;
+  color: var(--color-texto);
+  opacity: 0.75;
+}
+
+/* ===== 12) Historial de movimientos ===== */
+.seccion__titulo {
+  margin: 32px 0 12px;
+  color: var(--color-principal);
+}
+
+/* Permite deslizar la tabla de lado si no cabe en pantallas pequeñas */
+.tabla__contenedor {
+  overflow-x: auto;
+  border-radius: var(--radio);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla th,
+.tabla td {
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Encabezado de la tabla: fondo suave del color principal */
+.tabla th {
+  background: var(--color-principal-suave);
+}
+
+/* Líneas finas entre filas (sin bordes pesados) */
+.tabla tbody tr {
+  border-bottom: 1px solid var(--color-fondo-pagina);
+}
+
+/* Etiquetas de tipo de movimiento */
+.etiqueta {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.etiqueta--entrada {
+  background: var(--color-exito-suave);
+  color: var(--color-exito);
+}
+
+.etiqueta--salida {
+  background: var(--color-principal-suave);
+  color: var(--color-texto);
+}

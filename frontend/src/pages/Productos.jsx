@@ -1,12 +1,11 @@
 // useState sirve para que React "recuerde" datos que cambian
 // y vuelva a dibujar la página cuando cambian.
 import { useState } from 'react'
-// Los datos de ejemplo viven en un archivo aparte (temporal, hasta tener backend)
-import { productosEjemplo } from '../services/datosEjemplo.js'
 
-function Productos() {
-  // Lista de productos que se muestra. Empieza con los de ejemplo.
-  const [productos, setProductos] = useState(productosEjemplo)
+// Esta página ya NO tiene su propia lista: la recibe de App por "props".
+//  - productos: la lista actual de objetos
+//  - setProductos: la función para cambiar esa lista
+function Productos({ productos, setProductos }) {
 
   // Guarda el id del producto cuyo detalle está abierto (null = ninguno).
   const [abiertoId, setAbiertoId] = useState(null)
@@ -93,7 +92,9 @@ function Productos() {
 
               {/* Detalle: solo aparece si este es el producto abierto */}
               {abiertoId === producto.id && (
-                <p className="producto__descripcion">{producto.descripcion}</p>
+                <p className="producto__descripcion">
+                  {producto.descripcion || 'Sin descripción.'}
+                </p>
               )}
             </li>
           ))}

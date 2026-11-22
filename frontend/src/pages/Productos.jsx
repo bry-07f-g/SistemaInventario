@@ -2,9 +2,10 @@
 // y vuelva a dibujar la página cuando cambian.
 import { useState } from 'react'
 
-// Datos de EJEMPLO. Más adelante los reemplazaremos por los reales
-// que vengan de la base de datos a través del backend.
+// useState sirve para que React "recuerde" datos que cambian
+// y vuelva a dibujar la página cuando cambian.
 import { useState } from 'react'
+// Los datos de ejemplo viven en un archivo aparte (temporal, hasta tener backend)
 import { productosEjemplo } from '../services/datosEjemplo.js'
 
 function Productos() {

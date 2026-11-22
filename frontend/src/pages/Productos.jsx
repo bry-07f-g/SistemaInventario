@@ -1,12 +1,10 @@
 // useState sirve para que React "recuerde" datos que cambian
 // y vuelva a dibujar la página cuando cambian.
 import { useState } from 'react'
-
-// useState sirve para que React "recuerde" datos que cambian
-// y vuelva a dibujar la página cuando cambian.
-import { useState } from 'react'
 // Los datos de ejemplo viven en un archivo aparte (temporal, hasta tener backend)
 import { productosEjemplo } from '../services/datosEjemplo.js'
+
+function Productos() {
 
 function Productos() {
   // Lista de productos que se muestra. Empieza con los de ejemplo.

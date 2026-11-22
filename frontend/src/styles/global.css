@@ -17,7 +17,7 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
-  background: var(--color-fondo);
+  background: var(--color-fondo-pagina);
   color: var(--color-texto);
   line-height: 1.5;
 }
@@ -31,12 +31,19 @@ body {
   flex-direction: column;
 }
 
+/* El main es ahora un "cuadro" blanco con esquinas redondas y sombra.
+   La sombra lo hace ver levantado, así no necesita bordes. */
 .contenido {
   flex: 1;
-  width: 100%;
+  width: calc(
+    100% - 32px
+  ); /* deja 16px de aire a cada lado en pantallas chicas */
   max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 16px;
+  margin: 24px auto; /* centrado, con espacio arriba y abajo */
+  padding: 24px;
+  background: var(--color-fondo); /* blanco */
+  border-radius: 16px; /* esquinas redondas */
+  box-shadow: var(--sombra);
 }
 
 .pagina__titulo {
@@ -108,4 +115,109 @@ body {
 
 .footer a:hover {
   color: var(--color-principal);
+}
+
+/* ===== 6) Lista de productos ===== */
+.lista-productos {
+  list-style: none; /* quita los puntitos de la lista */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Cada producto es una "tarjeta" con borde Persimmon */
+.producto {
+  background: var(--color-fondo-pagina);
+  border-radius: var(--radio);
+  padding: 12px 16px;
+}
+
+.producto__fila {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap; /* en pantallas pequeñas baja a otra línea */
+}
+
+/* Imagen pequeña (miniatura) y su recuadro de reemplazo */
+.producto__img,
+.producto__sin-imagen {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  border: 2px solid var(--color-principal-suave);
+}
+
+.producto__img {
+  object-fit: cover; /* recorta la imagen sin deformarla */
+}
+
+.producto__sin-imagen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-principal-suave);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.producto__nombre {
+  flex: 1; /* ocupa el espacio sobrante, empuja lo demás a la derecha */
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* Etiqueta de cantidad: verde por defecto */
+.producto__cantidad {
+  padding: 2px 12px;
+  border-radius: 999px; /* forma de píldora */
+  background: var(--color-exito);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Modificador: cuando está agotado se pinta Blood Orange */
+.producto__cantidad--agotado {
+  background: var(--color-peligro);
+}
+
+.producto__acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.producto__descripcion {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-principal);
+}
+
+/* ===== 7) Botones ===== */
+.boton {
+  padding: 6px 14px;
+  border: 2px solid var(--color-principal);
+  border-radius: var(--radio);
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.boton:hover {
+  background: var(--color-principal-suave);
+}
+
+/* Botón de eliminar: usa el "rojo" (Blood Orange) */
+.boton--peligro {
+  border-color: var(--color-peligro);
+  color: var(--color-peligro);
+}
+
+.boton--peligro:hover {
+  background: var(--color-peligro);
+  color: #fff;
 }

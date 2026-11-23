@@ -3,6 +3,9 @@
 const express = require('express')
 const cors = require('cors')
 const pool = require('./config/database')
+const { CARPETA_UPLOADS } = require('./utils/archivos')
+const { ErrorHttp } = require('./utils/errores')
+const productosRoutes = require('./routes/productos.routes')
 
 const app = express()
 
@@ -13,6 +16,19 @@ app.use(cors({ origin: process.env.FRONTEND_URL }))
 
 // Permite leer el cuerpo de las peticiones cuando viene en formato JSON
 app.use(express.json())
+
+// Imágenes: todo lo que haya en la carpeta uploads se puede ver desde el
+// navegador en http://localhost:3000/uploads/archivo.jpg
+app.use(
+  '/uploads',
+  express.static(CARPETA_UPLOADS, {
+    index: false, // no mostrar listado de la carpeta
+    maxAge: '7d', // el navegador guarda la imagen y no la pide cada vez
+    // Le dice al navegador que NO adivine el tipo del archivo: si dice que
+    // es una imagen, se trata como imagen y nada más.
+    setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+  }),
+)
 
 // Ruta de prueba: sirve para comprobar que el servidor y la base de datos
 // responden. Ábrela en el navegador: http://localhost:3000/api/salud
@@ -31,7 +47,10 @@ app.get('/api/salud', async (req, res) => {
   }
 })
 
-// Aquí irán las rutas de productos y de movimientos (siguientes pasos).
+// Rutas de productos: todo lo que empiece con /api/productos
+app.use('/api/productos', productosRoutes)
+
+// Aquí irán las rutas de movimientos (siguiente paso).
 
 // Si ninguna ruta anterior respondió, esta atrapa la petición (error 404)
 app.use((req, res) => {
@@ -50,7 +69,10 @@ app.use((error, req, res, next) => {
 
   // 4xx = la culpa es de quien envió los datos, no de nuestro servidor
   if (estado >= 400 && estado < 500) {
-    return res.status(estado).json({ mensaje: 'Petición inválida' })
+    // Los ErrorHttp traen un mensaje escrito para la persona (por ejemplo
+    // "Ya existe un objeto llamado..."). Los demás usan uno general.
+    const mensaje = error instanceof ErrorHttp ? error.message : 'Petición inválida'
+    return res.status(estado).json({ mensaje })
   }
 
   // Cualquier otro error SÍ es nuestro: el detalle técnico se queda en la

@@ -1,0 +1,182 @@
+// Controlador de productos: aquí está la lógica de cada operación.
+// Las rutas (routes/productos.routes.js) deciden QUÉ función se ejecuta
+// según la dirección y el método (GET, POST...); aquí se hace el trabajo.
+//
+// Como usamos Express 5, no hace falta try/catch en todas partes para pasar
+// los errores: si una función async lanza un error, llega solo al manejador
+// de errores de app.js.
+const pool = require('../config/database')
+const { conTransaccion } = require('../utils/transaccion')
+const { ErrorHttp } = require('../utils/errores')
+const { borrarArchivo, borrarImagen } = require('../utils/archivos')
+const {
+  textoObligatorio,
+  textoOpcional,
+  enteroPositivo,
+  leerId,
+} = require('../utils/validar')
+
+// Tope para la cantidad: evita números absurdos y que al sumar se desborde
+const CANTIDAD_MAXIMA = 1000000
+
+// ---------------------------------------------------------------------
+// GET /api/productos  ->  lista todos los objetos
+// ---------------------------------------------------------------------
+async function listar(req, res) {
+  // La "imagen" es la ruta guardada (ej: "uploads/123-ab.jpg") o null.
+  // El frontend la une con la dirección del servidor para mostrarla.
+  const [filas] = await pool.query(
+    'SELECT id, nombre, descripcion, cantidad, imagen FROM productos ORDER BY nombre',
+  )
+  res.json(filas)
+}
+
+// ---------------------------------------------------------------------
+// POST /api/productos  ->  crea un objeto NUEVO
+//
+// Además de crear el objeto, anota su primer ingreso en el historial
+// (quién entregó, quién recibió). Las dos cosas van en una transacción.
+// ---------------------------------------------------------------------
+async function crear(req, res) {
+  // Si se envió imagen, multer ya la guardó en disco ANTES de llegar aquí.
+  // Si algo falla más abajo, hay que borrarla para no dejar archivos huérfanos.
+  const archivo = req.file
+  let guardado = false // pasa a true cuando la base de datos ya confirmó
+  let nombre
+
+  try {
+    // En Express 5, req.body puede ser undefined si no se envió nada
+    const cuerpo = req.body || {}
+
+    // 1) Revisar todo antes de tocar la base de datos
+    nombre = textoObligatorio(cuerpo.nombre, 'nombre', 100)
+    const descripcion = textoOpcional(cuerpo.descripcion, 'descripción', 1000)
+    const cantidad = enteroPositivo(cuerpo.cantidad, 'cantidad', CANTIDAD_MAXIMA)
+    const entrego = textoObligatorio(cuerpo.entrego, 'quién entregó', 100)
+    const recibio = textoObligatorio(cuerpo.recibio, 'quién recibió', 100)
+    const observacion = textoOpcional(cuerpo.observacion, 'observación', 255)
+    const imagen = archivo ? `uploads/${archivo.filename}` : null
+
+    // 2) Guardar el objeto y su primer ingreso, juntos
+    const id = await conTransaccion(async (conexion) => {
+      // Los "?" se reemplazan por los valores de la lista, de forma segura.
+      // NUNCA se pegan los datos directamente en el texto de la consulta:
+      // eso permitiría un ataque llamado "inyección SQL".
+      const [resultado] = await conexion.execute(
+        'INSERT INTO productos (nombre, descripcion, cantidad, imagen) VALUES (?, ?, ?, ?)',
+        [nombre, descripcion, cantidad, imagen],
+      )
+
+      await conexion.execute(
+        `INSERT INTO movimientos
+           (producto_id, producto_nombre, tipo, cantidad, entrego, recibio, observacion)
+         VALUES (?, ?, 'entrada', ?, ?, ?, ?)`,
+        [resultado.insertId, nombre, cantidad, entrego, recibio, observacion],
+      )
+
+      return resultado.insertId
+    })
+    guardado = true
+
+    // 201 = "creado"
+    res.status(201).json({ id, nombre, descripcion, cantidad, imagen })
+  } catch (error) {
+    // Si no se guardó nada, la imagen subida sobra: la borramos
+    if (archivo && !guardado) await borrarArchivo(archivo.path)
+
+    // El nombre es UNIQUE en la base de datos: si ya existe, MySQL avisa
+    // con este código. 409 = "conflicto".
+    if (error.code === 'ER_DUP_ENTRY') {
+      throw new ErrorHttp(409, `Ya existe un objeto llamado "${nombre}"`)
+    }
+    throw error
+  }
+}
+
+// ---------------------------------------------------------------------
+// PUT /api/productos/:id  ->  cambia nombre, descripción e imagen
+//
+// La CANTIDAD no se cambia aquí a propósito: solo cambia con entradas y
+// salidas (movimientos), para que el historial siempre cuadre.
+// ---------------------------------------------------------------------
+async function actualizar(req, res) {
+  const archivo = req.file // imagen nueva, si se envió
+  let guardado = false
+  let nombre
+
+  try {
+    const id = leerId(req.params.id)
+    const cuerpo = req.body || {}
+
+    nombre = textoObligatorio(cuerpo.nombre, 'nombre', 100)
+    const descripcion = textoOpcional(cuerpo.descripcion, 'descripción', 1000)
+
+    const imagenAnterior = await conTransaccion(async (conexion) => {
+      // "FOR UPDATE" bloquea la fila mientras dura la transacción, para que
+      // nadie más la cambie al mismo tiempo.
+      const [filas] = await conexion.execute(
+        'SELECT imagen FROM productos WHERE id = ? FOR UPDATE',
+        [id],
+      )
+      if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
+
+      // Si se envió imagen nueva la usamos; si no, se queda la que tenía
+      const imagenNueva = archivo ? `uploads/${archivo.filename}` : filas[0].imagen
+
+      await conexion.execute(
+        'UPDATE productos SET nombre = ?, descripcion = ?, imagen = ? WHERE id = ?',
+        [nombre, descripcion, imagenNueva, id],
+      )
+
+      // El historial muestra el nombre del objeto: si cambió, lo actualizamos
+      // también ahí para que todo se vea con el nombre nuevo.
+      await conexion.execute(
+        'UPDATE movimientos SET producto_nombre = ? WHERE producto_id = ?',
+        [nombre, id],
+      )
+
+      return filas[0].imagen
+    })
+    guardado = true
+
+    // Ya se guardó la imagen nueva: la anterior sobra
+    if (archivo) await borrarImagen(imagenAnterior)
+
+    const [filas] = await pool.execute(
+      'SELECT id, nombre, descripcion, cantidad, imagen FROM productos WHERE id = ?',
+      [id],
+    )
+    if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
+    res.json(filas[0])
+  } catch (error) {
+    if (archivo && !guardado) await borrarArchivo(archivo.path)
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      throw new ErrorHttp(409, `Ya existe un objeto llamado "${nombre}"`)
+    }
+    throw error
+  }
+}
+
+// ---------------------------------------------------------------------
+// DELETE /api/productos/:id  ->  elimina un objeto
+//
+// Su historial se CONSERVA: en la base de datos, la llave foránea está en
+// "ON DELETE SET NULL", y cada movimiento ya guarda el nombre del objeto.
+// ---------------------------------------------------------------------
+async function eliminar(req, res) {
+  const id = leerId(req.params.id)
+
+  const [filas] = await pool.execute('SELECT imagen FROM productos WHERE id = ?', [id])
+  if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
+
+  await pool.execute('DELETE FROM productos WHERE id = ?', [id])
+
+  // Con el objeto ya borrado, su imagen también sobra
+  await borrarImagen(filas[0].imagen)
+
+  // 204 = "hecho, y no hay nada que devolver"
+  res.status(204).end()
+}
+
+module.exports = { listar, crear, actualizar, eliminar }

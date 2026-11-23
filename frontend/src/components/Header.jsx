@@ -6,7 +6,7 @@ function Header() {
   return (
     <header className="header">
       {/* Saludo a la izquierda */}
-      <h1 className="header__saludo">Bienvenido Felipe y Byron</h1>
+      <h1 className="header__saludo">Bienvenido a Forage</h1>
 
       {/* Las dos opciones del menú */}
       <nav className="header__nav">

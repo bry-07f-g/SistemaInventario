@@ -6,6 +6,7 @@ const pool = require('./config/database')
 const { CARPETA_UPLOADS } = require('./utils/archivos')
 const { ErrorHttp } = require('./utils/errores')
 const productosRoutes = require('./routes/productos.routes')
+const movimientosRoutes = require('./routes/movimientos.routes')
 
 const app = express()
 
@@ -50,7 +51,8 @@ app.get('/api/salud', async (req, res) => {
 // Rutas de productos: todo lo que empiece con /api/productos
 app.use('/api/productos', productosRoutes)
 
-// Aquí irán las rutas de movimientos (siguiente paso).
+// Rutas de movimientos: todo lo que empiece con /api/movimientos
+app.use('/api/movimientos', movimientosRoutes)
 
 // Si ninguna ruta anterior respondió, esta atrapa la petición (error 404)
 app.use((req, res) => {

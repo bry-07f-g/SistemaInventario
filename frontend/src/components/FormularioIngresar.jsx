@@ -25,6 +25,10 @@ function FormularioIngresar({ productos, onRegistrar }) {
   // Archivo de imagen elegido y su vista previa
   const [archivo, setArchivo] = useState(null)
   const [vistaPrevia, setVistaPrevia] = useState(null)
+  
+  // true mientras esperamos la respuesta del servidor. Sirve para desactivar
+  // el botón y que un doble clic no registre el ingreso dos veces.
+  const [enviando, setEnviando] = useState(false)
 
   // Al cambiar entre nuevo/existente, el campo de imagen aparece o
   // desaparece, así que también olvidamos la imagen elegida.
@@ -52,19 +56,20 @@ function FormularioIngresar({ productos, onRegistrar }) {
   }
 
   // Al enviar el formulario
-  function enviar(evento) {
+  async function enviar(evento) {
     // Evita que el navegador recargue la página (su comportamiento normal)
     evento.preventDefault()
     const formularioHtml = evento.currentTarget
 
-    // Le entregamos los datos a la página, que es la que los guarda.
-    // "imagen" es la vista previa, para poder mostrar la miniatura en la lista.
-    const registrado = onRegistrar({
+// "archivo" es la imagen elegida: se envía al backend junto con el resto.
+    // "await" espera la respuesta del servidor antes de seguir.
+    setEnviando(true)
+    const registrado = await onRegistrar({
       tipoObjeto,
       ...formulario,
       archivo,
-      imagen: vistaPrevia,
     })
+    setEnviando(false)
 
     // Solo limpiamos si se registró bien
     if (registrado) {
@@ -128,7 +133,13 @@ function FormularioIngresar({ productos, onRegistrar }) {
 
           <label className="campo">
             <span>Imagen (opcional)</span>
-            <input type="file" accept="image/*" onChange={cambiarImagen} />
+            {/* Solo los tipos que acepta el backend; así el selector de archivos
+            ya filtra y no deja elegir otros */}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={cambiarImagen}
+            />
             {vistaPrevia && (
               <img
                 className="vista-previa"
@@ -208,8 +219,12 @@ function FormularioIngresar({ productos, onRegistrar }) {
         />
       </label>
 
-      <button type="submit" className="boton boton--principal">
-        Registrar ingreso
+      <button
+        type="submit"
+        className="boton boton--principal"
+        disabled={enviando}
+      >
+        {enviando ? 'Guardando...' : 'Registrar ingreso'}
       </button>
     </form>
   )

@@ -15,6 +15,10 @@ const formularioVacio = {
 //    Devuelve true si salió bien y false si, por ejemplo, no alcanzan las unidades.
 function FormularioDespachar({ productos, onRegistrar }) {
   const [formulario, setFormulario] = useState(formularioVacio)
+  
+  // true mientras esperamos la respuesta del servidor. Sirve para desactivar
+  // el botón y que un doble clic no registre la salida dos veces.
+  const [enviando, setEnviando] = useState(false)
 
   // El objeto elegido en la lista (undefined si todavía no se eligió ninguno).
   // find busca el primer producto cuyo id coincide.
@@ -27,14 +31,15 @@ function FormularioDespachar({ productos, onRegistrar }) {
     const { name, value } = evento.target
     setFormulario({ ...formulario, [name]: value })
   }
-
-  function enviar(evento) {
+  async function enviar(evento) {
     // Evita que el navegador recargue la página
     evento.preventDefault()
 
-    // La página comprueba que alcancen las unidades y guarda la salida.
+    // El backend comprueba que alcancen las unidades y guarda la salida.
     // Si algo falla, el formulario se queda como está para corregirlo.
-    const registrado = onRegistrar(formulario)
+    setEnviando(true)
+    const registrado = await onRegistrar(formulario)
+    setEnviando(false)
     if (registrado) {
       setFormulario(formularioVacio)
     }
@@ -119,8 +124,12 @@ function FormularioDespachar({ productos, onRegistrar }) {
         />
       </label>
 
-      <button type="submit" className="boton boton--principal">
-        Registrar salida
+      <button
+        type="submit"
+        className="boton boton--principal"
+        disabled={enviando}
+      >
+        {enviando ? 'Guardando...' : 'Registrar salida'}
       </button>
     </form>
   )

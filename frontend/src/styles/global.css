@@ -396,3 +396,9 @@ body {
   background: var(--color-principal-suave);
   color: var(--color-texto);
 }
+
+/* ===== 13) Texto secundario (por ejemplo "(eliminado)" en el historial) ===== */
+.texto-suave {
+  font-weight: 400;
+  opacity: 0.65;
+}

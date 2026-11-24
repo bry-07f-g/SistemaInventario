@@ -30,7 +30,7 @@ function HistorialMovimientos({ movimientos }) {
                 <tr key={m.id}>
                   {/* toLocaleString da la fecha en formato local (es-CO) */}
                   <td>
-                    {m.fecha.toLocaleString('es-CO', {
+                    {new Date(m.fecha).toLocaleString('es-CO', {
                       dateStyle: 'short',
                       timeStyle: 'short',
                     })}
@@ -47,7 +47,13 @@ function HistorialMovimientos({ movimientos }) {
                       {m.tipo === 'entrada' ? 'Entrada' : 'Salida'}
                     </span>
                   </td>
-                  <td>{m.producto}</td>
+                                    <td>
+                    {m.producto_nombre}
+                    {/* Si el objeto ya se eliminó, producto_id viene vacío (null) */}
+                    {m.producto_id === null && (
+                      <span className="texto-suave"> (eliminado)</span>
+                    )}
+                  </td>
                   <td>{m.cantidad}</td>
                   <td>{m.entrego}</td>
                   <td>{m.recibio}</td>

@@ -1,14 +1,16 @@
-// useState sirve para que React "recuerde" datos que cambian
-// y vuelva a dibujar la página cuando cambian.
 import { useState } from 'react'
+import { eliminarProducto, urlImagen } from '../services/api.js'
 
 // Esta página ya NO tiene su propia lista: la recibe de App por "props".
-//  - productos: la lista actual de objetos
-//  - setProductos: la función para cambiar esa lista
-function Productos({ productos, setProductos }) {
+//  - productos: la lista actual de objetos (viene del backend)
+//  - recargar: función que vuelve a pedir los datos al backend
+function Productos({ productos, recargar }) {
 
   // Guarda el id del producto cuyo detalle está abierto (null = ninguno).
   const [abiertoId, setAbiertoId] = useState(null)
+
+  // Mensaje para la persona: { tipo: 'exito' o 'error', texto } o null
+  const [mensaje, setMensaje] = useState(null)
 
   // "Ver": abre el detalle de un producto, o lo cierra si ya estaba abierto.
   function alternarDetalle(id) {
@@ -20,18 +22,39 @@ function Productos({ productos, setProductos }) {
     console.log('Editar (pendiente):', producto.nombre)
   }
 
-  // "Eliminar": pide confirmación y quita el producto de la lista.
-  function eliminar(producto) {
-    const confirmado = window.confirm(`¿Eliminar "${producto.nombre}"?`)
-    if (confirmado) {
-      // filter crea una lista nueva SIN el producto eliminado
-      setProductos(productos.filter((p) => p.id !== producto.id))
+    // "Eliminar": pide confirmación y borra el producto en el backend.
+  // "async" permite usar "await": esperar a que el servidor responda
+  // antes de seguir con la siguiente línea.
+  async function eliminar(producto) {
+    // Si aún quedan unidades, avisamos que se pierden del inventario.
+    // El historial NO se pierde (así lo decidimos en la base de datos).
+    const aviso =
+      producto.cantidad > 0
+        ? ` Todavía tiene ${producto.cantidad} unidades en el inventario.`
+        : ''
+    const confirmado = window.confirm(
+      `¿Eliminar "${producto.nombre}"?${aviso} Su historial de movimientos se conserva.`,
+    )
+    if (!confirmado) return
+
+    try {
+      await eliminarProducto(producto.id)
+      // Volvemos a pedir la lista para ver lo que quedó en la base de datos
+      await recargar()
+      setMensaje({ tipo: 'exito', texto: `Se eliminó "${producto.nombre}".` })
+    } catch (error) {
+      setMensaje({ tipo: 'error', texto: error.message })
     }
   }
 
   return (
     <section>
       <h2 className="pagina__titulo">Inventario</h2>
+    
+      {/* Mensaje de éxito (verde) o de error (Blood Orange) */}
+      {mensaje && (
+        <p className={`mensaje mensaje--${mensaje.tipo}`}>{mensaje.texto}</p>
+      )}
 
       {/* Si no hay productos, mostramos un mensaje en vez de una lista vacía */}
       {productos.length === 0 ? (
@@ -47,7 +70,7 @@ function Productos({ productos, setProductos }) {
                 {producto.imagen ? (
                   <img
                     className="producto__img"
-                    src={producto.imagen}
+                    src={urlImagen(producto.imagen)}
                     alt={producto.nombre}
                   />
                 ) : (

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import BarraBusqueda from './BarraBusqueda.jsx'
+import { filtrarPorNombre, textoStock } from '../utils/inventario.js'
 
 // Estado inicial del formulario: todos los campos vacíos.
 const formularioVacio = {
@@ -12,10 +14,17 @@ const formularioVacio = {
 // Recibe por props:
 //  - productos: la lista actual de objetos
 //  - onRegistrar: función de la página que registra la salida.
-//    Devuelve true si salió bien y false si, por ejemplo, no alcanzan las unidades.
+//    Es asíncrona: devuelve (más tarde) true si salió bien y false si, por
+//    ejemplo, no alcanzan las unidades.
 function FormularioDespachar({ productos, onRegistrar }) {
   const [formulario, setFormulario] = useState(formularioVacio)
-  
+
+  // Lo que hay escrito en la barra de búsqueda
+  const [busqueda, setBusqueda] = useState('')
+
+  // Los objetos que se ofrecen en la lista: solo los que contienen lo buscado
+  const visibles = filtrarPorNombre(productos, busqueda)
+
   // true mientras esperamos la respuesta del servidor. Sirve para desactivar
   // el botón y que un doble clic no registre la salida dos veces.
   const [enviando, setEnviando] = useState(false)
@@ -31,6 +40,20 @@ function FormularioDespachar({ productos, onRegistrar }) {
     const { name, value } = evento.target
     setFormulario({ ...formulario, [name]: value })
   }
+
+  // Cada letra nueva en la búsqueda actualiza la lista al instante.
+  // Si el objeto que estaba elegido ya no coincide con lo buscado, se
+  // desmarca para no despachar algo que la persona ya no está viendo.
+  function cambiarBusqueda(texto) {
+    setBusqueda(texto)
+    const sigueVisible = filtrarPorNombre(productos, texto).some(
+      (p) => String(p.id) === formulario.productoId,
+    )
+    if (!sigueVisible) {
+      setFormulario({ ...formulario, productoId: '' })
+    }
+  }
+
   async function enviar(evento) {
     // Evita que el navegador recargue la página
     evento.preventDefault()
@@ -42,6 +65,7 @@ function FormularioDespachar({ productos, onRegistrar }) {
     setEnviando(false)
     if (registrado) {
       setFormulario(formularioVacio)
+      setBusqueda('')
     }
   }
 
@@ -52,6 +76,9 @@ function FormularioDespachar({ productos, onRegistrar }) {
 
   return (
     <form className="formulario" onSubmit={enviar}>
+      {/* Barra de búsqueda: filtra la lista de abajo letra por letra */}
+      <BarraBusqueda valor={busqueda} onCambio={cambiarBusqueda} />
+
       <label className="campo">
         <span>Objeto</span>
         <select
@@ -61,13 +88,21 @@ function FormularioDespachar({ productos, onRegistrar }) {
           required
         >
           <option value="">Selecciona un objeto</option>
-          {productos.map((p) => (
+          {/* map dibuja una opción por cada objeto que coincide */}
+          {visibles.map((p) => (
             // "disabled" no deja elegir los que están agotados
             <option key={p.id} value={p.id} disabled={p.cantidad === 0}>
-              {p.nombre} ({p.cantidad === 0 ? 'agotado' : `hay ${p.cantidad}`})
+              {p.nombre} ({textoStock(p)})
             </option>
           ))}
         </select>
+        {busqueda.trim() !== '' && (
+          <small className="campo__ayuda">
+            {visibles.length === 0
+              ? 'Ningún objeto coincide con la búsqueda.'
+              : `${visibles.length} de ${productos.length} objetos`}
+          </small>
+        )}
         {/* Ayuda: muestra cuántas unidades hay del objeto elegido */}
         {productoElegido && (
           <small className="campo__ayuda">

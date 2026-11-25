@@ -56,6 +56,8 @@ function Movimientos({ productos, movimientos, recargar }) {
         formulario.append('nombre', nombre)
         formulario.append('descripcion', datos.descripcion)
         formulario.append('cantidad', cantidad)
+        // Vacío = sin aviso (el backend lo guarda como 0)
+        formulario.append('cantidad_minima', datos.cantidadMinima)
         formulario.append('entrego', datos.entrego)
         formulario.append('recibio', datos.recibio)
         formulario.append('observacion', datos.observacion)

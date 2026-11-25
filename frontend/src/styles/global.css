@@ -180,6 +180,13 @@ body {
 /* Modificador: cuando está agotado se pinta Blood Orange */
 .producto__cantidad--agotado {
   background: var(--color-peligro);
+
+  /* Modificador: cuando queda poco ("próximo a agotar") se pinta ámbar.
+   El texto va oscuro porque el blanco no se lee bien sobre amarillo. */
+  .producto__cantidad--bajo {
+    background: var(--color-aviso);
+    color: var(--color-aviso-texto);
+  }
 }
 
 .producto__acciones {
@@ -401,4 +408,27 @@ body {
 .texto-suave {
   font-weight: 400;
   opacity: 0.65;
+}
+
+/* ===== 14) Búsqueda ===== */
+/* Espacio entre la barra de búsqueda y la lista */
+.busqueda {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 560px;
+  margin-bottom: 16px;
+}
+
+/* Letras que coinciden con lo buscado: fondo Persimmon claro y subrayado */
+.resaltado {
+  background: var(--color-principal-suave);
+  color: inherit;
+  border-bottom: 2px solid var(--color-principal);
+}
+
+/* Botón desactivado (por ejemplo mientras dice "Guardando...") */
+.boton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

@@ -30,6 +30,10 @@ descripcion TEXT NULL,
 -- Se actualiza con cada entrada (suma) o salida (resta).
 cantidad INT NOT NULL DEFAULT 0,
 
+-- Cantidad mínima: cuando hay esta cantidad o menos (pero todavía hay),
+-- el objeto se marca como "próximo a agotar". 0 = sin aviso.
+cantidad_minima INT NOT NULL DEFAULT 0,
+
 -- Ruta de la imagen (ej: "uploads/1732200000-silla.jpg").
 -- Guardamos solo el texto de la ruta, no la imagen, para no pesar.
 imagen VARCHAR(255) NULL,
@@ -40,9 +44,11 @@ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 -- Fecha de la última modificación (se actualiza sola con cada cambio).
 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
--- Regla de seguridad: la cantidad nunca puede ser negativa.
--- Si algo intenta dejarla en -3, MySQL rechaza el cambio.
-CONSTRAINT chk_productos_cantidad CHECK (cantidad >= 0) );
+-- Reglas de seguridad: ni la cantidad ni la cantidad mínima pueden ser
+-- negativas. Si algo intenta dejarlas en -3, MySQL rechaza el cambio.
+CONSTRAINT chk_productos_cantidad CHECK (cantidad >= 0),
+  CONSTRAINT chk_productos_cantidad_minima CHECK (cantidad_minima >= 0)
+);
 
 -- =====================================================================
 -- TABLA: movimientos
@@ -67,8 +73,7 @@ tipo ENUM('entrada', 'salida') NOT NULL,
 cantidad INT NOT NULL,
 
 -- Quién entregó y quién recibió: texto libre, como acordamos.
-entrego VARCHAR(100) NOT NULL,
-recibio VARCHAR(100) NOT NULL,
+entrego VARCHAR(100) NOT NULL, recibio VARCHAR(100) NOT NULL,
 
 -- Nota opcional (ej: "Para la oficina del segundo piso").
 observacion VARCHAR(255) NULL,

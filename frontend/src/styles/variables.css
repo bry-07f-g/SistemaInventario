@@ -10,6 +10,8 @@
   --color-exito-suave: #e8f3e9; /* Verde muy claro: fondo de mensajes de éxito */
   --color-peligro-suave: #fbe6e6; /* Rojo muy claro: fondo de mensajes de error */
   --color-fondo-pagina: #f4f1ee; /* Gris cálido muy claro: fondo detrás del cuadro */
+  --color-aviso: #f6b50f; /* Ámbar: "próximo a agotar" */
+  --color-aviso-texto: #3d2b00; /* Marrón oscuro: se lee bien sobre el ámbar */
 
   --sombra: 0 4px 16px rgba(63, 63, 63, 0.15); /* Sombra suave: da efecto de "levantado" */
 

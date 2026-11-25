@@ -61,6 +61,30 @@ function enteroPositivo(valor, etiqueta, maximo) {
   return numero
 }
 
+// Número entero entre 0 y "maximo" que puede faltar. Sirve para campos como
+// la cantidad mínima, donde 0 es un valor válido ("sin aviso").
+// Si falta o llega vacío devuelve null: quien lo llama decide qué hacer
+// (al crear usa 0; al editar deja el valor que ya tenía).
+function enteroNoNegativoOpcional(valor, etiqueta, maximo) {
+  if (valor === undefined || valor === null) return null
+  if (typeof valor === 'string' && valor.trim() === '') return null
+
+  let numero
+  if (typeof valor === 'number') {
+    numero = valor
+  } else if (typeof valor === 'string' && /^\d{1,10}$/.test(valor.trim())) {
+    numero = Number(valor.trim())
+  }
+
+  if (!Number.isInteger(numero) || numero < 0 || numero > maximo) {
+    throw new ErrorHttp(
+      400,
+      `El campo "${etiqueta}" debe ser un número entero entre 0 y ${maximo}`,
+    )
+  }
+  return numero
+}
+
 // El id que viene en la dirección (/api/productos/7). Siempre llega como
 // texto, así que lo revisamos y lo convertimos a número.
 function leerId(valor) {
@@ -71,4 +95,10 @@ function leerId(valor) {
   return Number(valor)
 }
 
-module.exports = { textoObligatorio, textoOpcional, enteroPositivo, leerId }
+module.exports = {
+  textoObligatorio,
+  textoOpcional,
+  enteroPositivo,
+  enteroNoNegativoOpcional,
+  leerId,
+}

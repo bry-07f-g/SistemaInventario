@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import BarraBusqueda from './BarraBusqueda.jsx'
+import { filtrarPorNombre, textoStock } from '../utils/inventario.js'
 
 // Estado inicial del formulario: todos los campos vacíos.
 const formularioVacio = {
@@ -6,6 +8,7 @@ const formularioVacio = {
   nombre: '',
   descripcion: '',
   cantidad: '',
+  cantidadMinima: '', // cantidad a partir de la cual se marca "próximo a agotar"
   entrego: '',
   recibio: '',
   observacion: '',
@@ -14,7 +17,8 @@ const formularioVacio = {
 // Recibe por props:
 //  - productos: la lista actual (para elegir un objeto que ya existe)
 //  - onRegistrar: función de la página que guarda el ingreso.
-//    Devuelve true si salió bien (entonces limpiamos el formulario).
+//    Es asíncrona: devuelve (más tarde) true si salió bien y entonces
+//    limpiamos el formulario.
 function FormularioIngresar({ productos, onRegistrar }) {
   // ¿Objeto 'nuevo' o uno 'existente'?
   const [tipoObjeto, setTipoObjeto] = useState('nuevo')
@@ -25,7 +29,13 @@ function FormularioIngresar({ productos, onRegistrar }) {
   // Archivo de imagen elegido y su vista previa
   const [archivo, setArchivo] = useState(null)
   const [vistaPrevia, setVistaPrevia] = useState(null)
-  
+
+  // Lo que hay escrito en la barra de búsqueda de "objeto existente"
+  const [busqueda, setBusqueda] = useState('')
+
+  // Los objetos que se ofrecen en la lista: solo los que contienen lo buscado
+  const visibles = filtrarPorNombre(productos, busqueda)
+
   // true mientras esperamos la respuesta del servidor. Sirve para desactivar
   // el botón y que un doble clic no registre el ingreso dos veces.
   const [enviando, setEnviando] = useState(false)
@@ -36,6 +46,20 @@ function FormularioIngresar({ productos, onRegistrar }) {
     setTipoObjeto(valor)
     setArchivo(null)
     setVistaPrevia(null)
+  }
+
+  // Cada letra nueva en la búsqueda actualiza la lista al instante.
+  // Si el objeto que estaba elegido ya no coincide con lo buscado, se
+  // desmarca: así nunca se registra un movimiento sobre un objeto que la
+  // persona ya no está viendo en la lista.
+  function cambiarBusqueda(texto) {
+    setBusqueda(texto)
+    const sigueVisible = filtrarPorNombre(productos, texto).some(
+      (p) => String(p.id) === formulario.productoId,
+    )
+    if (!sigueVisible) {
+      setFormulario({ ...formulario, productoId: '' })
+    }
   }
 
   // Un solo manejador para todos los campos: usa el atributo "name"
@@ -55,13 +79,14 @@ function FormularioIngresar({ productos, onRegistrar }) {
     }
   }
 
-  // Al enviar el formulario
+  // Al enviar el formulario. "async" para poder esperar al servidor.
   async function enviar(evento) {
     // Evita que el navegador recargue la página (su comportamiento normal)
     evento.preventDefault()
     const formularioHtml = evento.currentTarget
 
-// "archivo" es la imagen elegida: se envía al backend junto con el resto.
+    // Le entregamos los datos a la página, que es la que los guarda.
+    // "archivo" es la imagen elegida: se envía al backend junto con el resto.
     // "await" espera la respuesta del servidor antes de seguir.
     setEnviando(true)
     const registrado = await onRegistrar({
@@ -74,6 +99,7 @@ function FormularioIngresar({ productos, onRegistrar }) {
     // Solo limpiamos si se registró bien
     if (registrado) {
       setFormulario(formularioVacio)
+      setBusqueda('')
       setArchivo(null)
       setVistaPrevia(null)
       formularioHtml.reset() // también vacía el campo de archivo
@@ -134,7 +160,7 @@ function FormularioIngresar({ productos, onRegistrar }) {
           <label className="campo">
             <span>Imagen (opcional)</span>
             {/* Solo los tipos que acepta el backend; así el selector de archivos
-            ya filtra y no deja elegir otros */}
+                ya filtra y no deja elegir otros */}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
@@ -150,22 +176,35 @@ function FormularioIngresar({ productos, onRegistrar }) {
           </label>
         </>
       ) : (
-        <label className="campo">
-          <span>Objeto</span>
-          <select
-            name="productoId"
-            value={formulario.productoId}
-            onChange={cambiarCampo}
-            required
-          >
-            <option value="">Selecciona un objeto</option>
-            {productos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre} (hay {p.cantidad})
-              </option>
-            ))}
-          </select>
-        </label>
+        <>
+          {/* Barra de búsqueda: filtra la lista de abajo letra por letra */}
+          <BarraBusqueda valor={busqueda} onCambio={cambiarBusqueda} />
+
+          <label className="campo">
+            <span>Objeto</span>
+            <select
+              name="productoId"
+              value={formulario.productoId}
+              onChange={cambiarCampo}
+              required
+            >
+              <option value="">Selecciona un objeto</option>
+              {/* map dibuja una opción por cada objeto que coincide */}
+              {visibles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre} ({textoStock(p)})
+                </option>
+              ))}
+            </select>
+            {busqueda.trim() !== '' && (
+              <small className="campo__ayuda">
+                {visibles.length === 0
+                  ? 'Ningún objeto coincide con la búsqueda.'
+                  : `${visibles.length} de ${productos.length} objetos`}
+              </small>
+            )}
+          </label>
+        </>
       )}
 
       {/* Campos comunes */}
@@ -183,6 +222,25 @@ function FormularioIngresar({ productos, onRegistrar }) {
           required
         />
       </label>
+
+      {/* Solo al crear un objeto nuevo: cuándo avisar que se está acabando */}
+      {tipoObjeto === 'nuevo' && (
+        <label className="campo">
+          <span>Cantidad mínima (opcional)</span>
+          <input
+            type="number"
+            name="cantidadMinima"
+            value={formulario.cantidadMinima}
+            onChange={cambiarCampo}
+            min="0"
+            step="1"
+          />
+          <small className="campo__ayuda">
+            Cuando queden esta cantidad o menos, el objeto se marcará como
+            &quot;próximo a agotar&quot;. Déjalo vacío si no quieres aviso.
+          </small>
+        </label>
+      )}
 
       <label className="campo">
         <span>Quién entregó</span>

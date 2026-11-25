@@ -13,6 +13,7 @@ const {
   textoObligatorio,
   textoOpcional,
   enteroPositivo,
+  enteroNoNegativoOpcional,
   leerId,
 } = require('../utils/validar')
 
@@ -26,7 +27,7 @@ async function listar(req, res) {
   // La "imagen" es la ruta guardada (ej: "uploads/123-ab.jpg") o null.
   // El frontend la une con la dirección del servidor para mostrarla.
   const [filas] = await pool.query(
-    'SELECT id, nombre, descripcion, cantidad, imagen FROM productos ORDER BY nombre',
+    'SELECT id, nombre, descripcion, cantidad, cantidad_minima, imagen FROM productos ORDER BY nombre',
   )
   res.json(filas)
 }
@@ -52,6 +53,10 @@ async function crear(req, res) {
     nombre = textoObligatorio(cuerpo.nombre, 'nombre', 100)
     const descripcion = textoOpcional(cuerpo.descripcion, 'descripción', 1000)
     const cantidad = enteroPositivo(cuerpo.cantidad, 'cantidad', CANTIDAD_MAXIMA)
+    // Cantidad mínima: cuando hay esta cantidad o menos, el objeto se marca
+    // "próximo a agotar". Es opcional; si no se envía, queda en 0 (sin aviso).
+    const cantidadMinima =
+      enteroNoNegativoOpcional(cuerpo.cantidad_minima, 'cantidad mínima', CANTIDAD_MAXIMA) ?? 0
     const entrego = textoObligatorio(cuerpo.entrego, 'quién entregó', 100)
     const recibio = textoObligatorio(cuerpo.recibio, 'quién recibió', 100)
     const observacion = textoOpcional(cuerpo.observacion, 'observación', 255)
@@ -63,8 +68,9 @@ async function crear(req, res) {
       // NUNCA se pegan los datos directamente en el texto de la consulta:
       // eso permitiría un ataque llamado "inyección SQL".
       const [resultado] = await conexion.execute(
-        'INSERT INTO productos (nombre, descripcion, cantidad, imagen) VALUES (?, ?, ?, ?)',
-        [nombre, descripcion, cantidad, imagen],
+        `INSERT INTO productos (nombre, descripcion, cantidad, cantidad_minima, imagen)
+         VALUES (?, ?, ?, ?, ?)`,
+        [nombre, descripcion, cantidad, cantidadMinima, imagen],
       )
 
       await conexion.execute(
@@ -79,7 +85,7 @@ async function crear(req, res) {
     guardado = true
 
     // 201 = "creado"
-    res.status(201).json({ id, nombre, descripcion, cantidad, imagen })
+    res.status(201).json({ id, nombre, descripcion, cantidad, cantidad_minima: cantidadMinima, imagen })
   } catch (error) {
     // Si no se guardó nada, la imagen subida sobra: la borramos
     if (archivo && !guardado) await borrarArchivo(archivo.path)
@@ -94,7 +100,7 @@ async function crear(req, res) {
 }
 
 // ---------------------------------------------------------------------
-// PUT /api/productos/:id  ->  cambia nombre, descripción e imagen
+// PUT /api/productos/:id  ->  cambia nombre, descripción, imagen y cantidad mínima
 //
 // La CANTIDAD no se cambia aquí a propósito: solo cambia con entradas y
 // salidas (movimientos), para que el historial siempre cuadre.
@@ -110,6 +116,12 @@ async function actualizar(req, res) {
 
     nombre = textoObligatorio(cuerpo.nombre, 'nombre', 100)
     const descripcion = textoOpcional(cuerpo.descripcion, 'descripción', 1000)
+    // Si no se envía la cantidad mínima, se queda la que ya tenía (null aquí)
+    const cantidadMinima = enteroNoNegativoOpcional(
+      cuerpo.cantidad_minima,
+      'cantidad mínima',
+      CANTIDAD_MAXIMA,
+    )
 
     const imagenAnterior = await conTransaccion(async (conexion) => {
       // "FOR UPDATE" bloquea la fila mientras dura la transacción, para que
@@ -124,8 +136,13 @@ async function actualizar(req, res) {
       const imagenNueva = archivo ? `uploads/${archivo.filename}` : filas[0].imagen
 
       await conexion.execute(
-        'UPDATE productos SET nombre = ?, descripcion = ?, imagen = ? WHERE id = ?',
-        [nombre, descripcion, imagenNueva, id],
+        // COALESCE(?, cantidad_minima) significa: "usa el valor nuevo; y si el
+        // nuevo está vacío (null), deja el que ya estaba"
+        `UPDATE productos
+            SET nombre = ?, descripcion = ?, imagen = ?,
+                cantidad_minima = COALESCE(?, cantidad_minima)
+          WHERE id = ?`,
+        [nombre, descripcion, imagenNueva, cantidadMinima, id],
       )
 
       // El historial muestra el nombre del objeto: si cambió, lo actualizamos
@@ -143,7 +160,7 @@ async function actualizar(req, res) {
     if (archivo) await borrarImagen(imagenAnterior)
 
     const [filas] = await pool.execute(
-      'SELECT id, nombre, descripcion, cantidad, imagen FROM productos WHERE id = ?',
+      'SELECT id, nombre, descripcion, cantidad, cantidad_minima, imagen FROM productos WHERE id = ?',
       [id],
     )
     if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')

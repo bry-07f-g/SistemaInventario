@@ -4,6 +4,7 @@ import { useState } from 'react'
 import BarraBusqueda from '../components/BarraBusqueda.jsx'
 import NombreResaltado from '../components/NombreResaltado.jsx'
 import FormularioEditar from '../components/FormularioEditar.jsx'
+import ModalConfirmacion from '../components/ModalConfirmacion.jsx'
 import {
   actualizarProducto,
   eliminarProducto,
@@ -66,9 +67,31 @@ function Productos({ productos, recargar }) {
     }
   }
 
-  // "Eliminar": pide confirmación y borra el producto en el backend.
-  // "async" permite usar "await": esperar a que el servidor responda
-  // antes de seguir con la siguiente línea.
+// "Eliminar": NO borra todavía; solo abre el modal para pedir confirmación.
+function eliminar(producto) {
+  setMensaje(null)
+  setPorEliminar(producto)
+}
+
+// Se ejecuta al pulsar el botón rojo "Eliminar" dentro del modal.
+// "async" permite usar "await": esperar a que el servidor responda
+// antes de seguir con la siguiente línea.
+async function confirmarEliminacion() {
+  const producto = porEliminar
+  setEliminando(true)
+  try {
+    await eliminarProducto(producto.id)
+    // Volvemos a pedir la lista para ver lo que quedó en la base de datos
+    await recargar()
+    setMensaje({ tipo: 'exito', texto: `Se eliminó "${producto.nombre}".` })
+  } catch (error) {
+    setMensaje({ tipo: 'error', texto: error.message })
+  } finally {
+    // Salga bien o mal, se cierra el modal y se desbloquean los botones
+    setEliminando(false)
+    setPorEliminar(null)
+  }
+}
 
   return (
     <section>

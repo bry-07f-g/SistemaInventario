@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { urlImagen } from '../services/api.js'
+import ModalConfirmacion from '../components/ModalConfirmacion.jsx'
 
 // Formulario para editar UN objeto. Se muestra dentro de la fila del objeto.
 // Recibe por props:

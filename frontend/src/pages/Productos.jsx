@@ -19,6 +19,11 @@ function Productos({ productos, recargar }) {
   // Guarda el id del producto cuyo detalle está abierto (null = ninguno).
   const [abiertoId, setAbiertoId] = useState(null)
 
+  // Objeto que se quiere eliminar y está esperando confirmación en el modal
+  // (null = el modal está cerrado), y si ya se está borrando en el servidor.
+  const [porEliminar, setPorEliminar] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
+
   // Mensaje para la persona: { tipo: 'exito' o 'error', texto } o null
   const [mensaje, setMensaje] = useState(null)
 
@@ -64,27 +69,6 @@ function Productos({ productos, recargar }) {
   // "Eliminar": pide confirmación y borra el producto en el backend.
   // "async" permite usar "await": esperar a que el servidor responda
   // antes de seguir con la siguiente línea.
-  async function eliminar(producto) {
-    // Si aún quedan unidades, avisamos que se pierden del inventario.
-    // El historial NO se pierde (así lo decidimos en la base de datos).
-    const aviso =
-      producto.cantidad > 0
-        ? ` Todavía tiene ${producto.cantidad} unidades en el inventario.`
-        : ''
-    const confirmado = window.confirm(
-      `¿Eliminar "${producto.nombre}"?${aviso} Su historial de movimientos se conserva.`,
-    )
-    if (!confirmado) return
-
-    try {
-      await eliminarProducto(producto.id)
-      // Volvemos a pedir la lista para ver lo que quedó en la base de datos
-      await recargar()
-      setMensaje({ tipo: 'exito', texto: `Se eliminó "${producto.nombre}".` })
-    } catch (error) {
-      setMensaje({ tipo: 'error', texto: error.message })
-    }
-  }
 
   return (
     <section>
@@ -201,6 +185,33 @@ function Productos({ productos, recargar }) {
             )
           })}
         </ul>
+      )}
+
+            {/* Modal de confirmación: solo existe mientras hay un objeto por eliminar */}
+      {porEliminar && (
+        <ModalConfirmacion
+          titulo={`¿Eliminar "${porEliminar.nombre}"?`}
+          textoConfirmar="Eliminar"
+          peligro
+          procesando={eliminando}
+          onConfirmar={confirmarEliminacion}
+          onCancelar={() => setPorEliminar(null)}
+        >
+          {/* Si aún quedan unidades, avisamos que se pierden del inventario */}
+          {porEliminar.cantidad > 0 && (
+            <p>
+              Todavía tiene{' '}
+              <strong>
+                {porEliminar.cantidad}{' '}
+                {porEliminar.cantidad === 1 ? 'unidad' : 'unidades'}
+              </strong>{' '}
+              en el inventario.
+            </p>
+          )}
+          {/* El historial NO se pierde (así lo decidimos en la base de datos) */}
+          <p>Su historial de movimientos se conserva.</p>
+          <p>Esta acción no se puede deshacer.</p>
+        </ModalConfirmacion>
       )}
     </section>
   )

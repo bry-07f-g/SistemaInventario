@@ -527,3 +527,61 @@ body {
   color: #6b6560;
   font-weight: 400;
 }
+
+/* ===== Modal de confirmación ===== */
+/* Fondo oscuro que cubre toda la pantalla y centra la ventana.
+   "fixed" lo deja fijo aunque la página tenga scroll. */
+.modal__fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* La ventana: blanca, bordes redondeados y sombra, como la tarjeta central */
+.modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  background: var(--color-fondo);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal__titulo {
+  margin: 0 0 12px;
+  color: var(--color-peligro);
+  overflow-wrap: anywhere; /* nombres largos no desbordan la ventana */
+}
+
+.modal__contenido p {
+  margin: 0 0 8px;
+}
+
+.modal__botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Botón de confirmar peligroso: relleno rojo (Blood Orange) */
+.boton--peligro-solido {
+  background: var(--color-peligro);
+  border-color: var(--color-peligro);
+  color: #fff;
+  font-weight: 700;
+}
+
+.boton--peligro-solido:hover {
+  filter: brightness(0.9);
+}
+
+/* La ventana puede recibir el foco (para atrapar el Tab), pero sin recuadro */
+.modal:focus {
+  outline: none;
+}

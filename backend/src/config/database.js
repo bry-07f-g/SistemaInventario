@@ -21,7 +21,21 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 
   // Permite guardar y leer tildes, ñ y emojis sin que se dañen
+  // Permite guardar y leer tildes, ñ y emojis sin que se dañen
   charset: 'utf8mb4',
+
+  // Mantiene viva cada conexión inactiva (algunas bases en la nube cierran
+  // las conexiones que llevan mucho rato sin usarse)
+  enableKeepAlive: true,
+
+  // Conexión cifrada (SSL/TLS). Las bases en la nube, como TiDB Cloud, la
+  // EXIGEN. En tu computador no hace falta, por eso solo se activa si en el
+  // .env está DB_SSL=true. "rejectUnauthorized" obliga a comprobar que el
+  // servidor es realmente el de la base y no un impostor.
+  ssl:
+    process.env.DB_SSL === 'true'
+      ? { minVersion: 'TLSv1.2', rejectUnauthorized: true }
+      : undefined,
 })
 
 // "module.exports" es lo que este archivo entrega a los demás archivos

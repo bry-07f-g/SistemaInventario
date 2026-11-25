@@ -164,22 +164,27 @@ function Productos({ productos, recargar }) {
                     <button className="boton" onClick={() => alternarEdicion(producto)}>
                       {editandoId === producto.id ? 'Cerrar edición' : 'Editar'}
                     </button>
-                    {/* Formulario de edición: solo en el producto que se edita */}
-                    {editandoId === producto.id && (
-                      <FormularioEditar
-                        producto={producto}
-                        onGuardar={guardarEdicion}
-                        onCancelar={() => setEditandoId(null)}
-                      />
-                    )}
+                    
                     <button
                       className="boton boton--peligro"
                       onClick={() => eliminar(producto)}
                     >
                       Eliminar
                     </button>
-                  </div>
-                </div>
+                    </div>   {/* cierra producto__acciones */}
+                </div>     {/* cierra producto__fila */}
+
+                {/* Formulario de edición: solo en el producto que se edita */}
+                {editandoId === producto.id && (
+                  <FormularioEditar
+                    producto={producto}
+                    onGuardar={guardarEdicion}
+                    onCancelar={() => setEditandoId(null)}
+                  />
+                )}
+
+                {/* Detalle: solo aparece si este es el producto abierto */}
+                
 
                 {/* Detalle: solo aparece si este es el producto abierto */}
                 {abiertoId === producto.id && (

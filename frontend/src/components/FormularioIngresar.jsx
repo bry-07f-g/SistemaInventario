@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import SelectorObjeto from './SelectorObjeto.jsx'
-import { filtrarPorNombre, textoStock } from '../utils/inventario.js'
 
 // Estado inicial del formulario: todos los campos vacíos.
 const formularioVacio = {
@@ -42,20 +41,6 @@ function FormularioIngresar({ productos, onRegistrar }) {
     setVistaPrevia(null)
   }
 
-  // Cada letra nueva en la búsqueda actualiza la lista al instante.
-  // Si el objeto que estaba elegido ya no coincide con lo buscado, se
-  // desmarca: así nunca se registra un movimiento sobre un objeto que la
-  // persona ya no está viendo en la lista.
-  function cambiarBusqueda(texto) {
-    setBusqueda(texto)
-    const sigueVisible = filtrarPorNombre(productos, texto).some(
-      (p) => String(p.id) === formulario.productoId,
-    )
-    if (!sigueVisible) {
-      setFormulario({ ...formulario, productoId: '' })
-    }
-  }
-
   // Un solo manejador para todos los campos: usa el atributo "name"
   // del campo para saber cuál valor del objeto actualizar.
   function cambiarCampo(evento) {
@@ -93,7 +78,6 @@ function FormularioIngresar({ productos, onRegistrar }) {
     // Solo limpiamos si se registró bien
     if (registrado) {
       setFormulario(formularioVacio)
-      setBusqueda('')
       setArchivo(null)
       setVistaPrevia(null)
       formularioHtml.reset() // también vacía el campo de archivo
@@ -171,7 +155,6 @@ function FormularioIngresar({ productos, onRegistrar }) {
         </>
       ) : (
         <>
-          {/* Barra de búsqueda: filtra la lista de abajo letra por letra */}
           {/* Un solo campo: se puede escribir para filtrar o abrir la lista
           y desplazarse para elegir */}
           <SelectorObjeto

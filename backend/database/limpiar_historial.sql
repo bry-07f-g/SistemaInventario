@@ -1,38 +1,20 @@
 -- =====================================================================
--- REINICIAR TODO  (borra movimientos Y objetos: la base queda vacía)
--- Úsalo antes de entregar el sistema, para quitar todos los datos de
--- prueba. NO se puede deshacer.
--- Después, borra también a mano los archivos de la carpeta
--- backend/uploads (las imágenes de los objetos), dejando el .gitkeep.
+-- LIMPIAR HISTORIAL  (borra SOLO los movimientos; los objetos quedan)
+-- Úsalo cuando quieras empezar el historial desde cero sin perder el
+-- inventario. OJO: la cantidad de cada objeto NO cambia, así que el
+-- historial nuevo ya no explicará el stock que ya existe.
 -- =====================================================================
 USE inventario_db;
 
-SELECT (
-        SELECT COUNT(*)
-        FROM productos
-    ) AS objetos_a_borrar,
-    (
-        SELECT COUNT(*)
-        FROM movimientos
-    ) AS movimientos_a_borrar;
+-- Antes de borrar, mira cuántos movimientos hay:
+SELECT COUNT(*) AS movimientos_a_borrar FROM movimientos;
 
--- Primero los movimientos y luego los objetos (los movimientos dependen
--- de los objetos). "WHERE id > 0" por el modo seguro de Workbench.
+-- Borra todos los movimientos. "WHERE id > 0" es para que Workbench (modo
+-- seguro, error 1175) lo permita: el id siempre es mayor que 0.
 DELETE FROM movimientos WHERE id > 0;
 
-DELETE FROM productos WHERE id > 0;
-
--- Reinicia los contadores de id en 1
+-- Reinicia el contador: el próximo movimiento tendrá id 1 otra vez.
 ALTER TABLE movimientos AUTO_INCREMENT = 1;
 
-ALTER TABLE productos AUTO_INCREMENT = 1;
-
--- Comprobación: ambos deben decir 0
-SELECT (
-        SELECT COUNT(*)
-        FROM productos
-    ) AS objetos_que_quedan,
-    (
-        SELECT COUNT(*)
-        FROM movimientos
-    ) AS movimientos_que_quedan;
+-- Comprobación: debe decir 0
+SELECT COUNT(*) AS movimientos_que_quedan FROM movimientos;

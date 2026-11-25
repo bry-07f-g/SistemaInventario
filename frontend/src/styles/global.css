@@ -446,3 +446,84 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ===== Selector de objetos (escribir o elegir de la lista) ===== */
+/* Caja que contiene el campo, la flecha y la lista desplegable.
+   "relative" permite colocar la lista justo debajo del campo. */
+.combo {
+  position: relative;
+}
+
+.combo input {
+  width: 100%;
+  padding-right: 36px; /* espacio para la flecha */
+}
+
+.combo__flecha {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 36px;
+  border: none;
+  background: transparent;
+  color: var(--color-principal);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+/* Lista desplegable: altura máxima y scroll si hay muchos objetos */
+.combo__lista {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 240px;
+  margin: 4px 0 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--color-fondo);
+  border: 2px solid var(--color-principal);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.combo__opcion {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+/* Opción resaltada: con el mouse encima o con las flechas del teclado */
+.combo__opcion:hover,
+.combo__opcion--activa {
+  background: var(--color-principal-suave);
+}
+
+.combo__opcion--elegida {
+  font-weight: 700;
+}
+
+/* Objetos agotados en el despacho: se ven apagados y no se pueden elegir */
+.combo__opcion--bloqueada {
+  color: #8a8480;
+  cursor: not-allowed;
+}
+
+.combo__opcion--bloqueada:hover {
+  background: transparent;
+}
+
+.combo__stock {
+  color: #6b6560;
+  font-size: 0.9em;
+}
+
+.combo__vacio {
+  padding: 8px 10px;
+  color: #6b6560;
+  font-weight: 400;
+}

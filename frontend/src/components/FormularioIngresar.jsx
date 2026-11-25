@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import BarraBusqueda from './BarraBusqueda.jsx'
+import SelectorObjeto from './SelectorObjeto.jsx'
 import { filtrarPorNombre, textoStock } from '../utils/inventario.js'
 
 // Estado inicial del formulario: todos los campos vacíos.
@@ -29,12 +29,6 @@ function FormularioIngresar({ productos, onRegistrar }) {
   // Archivo de imagen elegido y su vista previa
   const [archivo, setArchivo] = useState(null)
   const [vistaPrevia, setVistaPrevia] = useState(null)
-
-  // Lo que hay escrito en la barra de búsqueda de "objeto existente"
-  const [busqueda, setBusqueda] = useState('')
-
-  // Los objetos que se ofrecen en la lista: solo los que contienen lo buscado
-  const visibles = filtrarPorNombre(productos, busqueda)
 
   // true mientras esperamos la respuesta del servidor. Sirve para desactivar
   // el botón y que un doble clic no registre el ingreso dos veces.
@@ -178,32 +172,13 @@ function FormularioIngresar({ productos, onRegistrar }) {
       ) : (
         <>
           {/* Barra de búsqueda: filtra la lista de abajo letra por letra */}
-          <BarraBusqueda valor={busqueda} onCambio={cambiarBusqueda} />
-
-          <label className="campo">
-            <span>Objeto</span>
-            <select
-              name="productoId"
-              value={formulario.productoId}
-              onChange={cambiarCampo}
-              required
-            >
-              <option value="">Selecciona un objeto</option>
-              {/* map dibuja una opción por cada objeto que coincide */}
-              {visibles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre} ({textoStock(p)})
-                </option>
-              ))}
-            </select>
-            {busqueda.trim() !== '' && (
-              <small className="campo__ayuda">
-                {visibles.length === 0
-                  ? 'Ningún objeto coincide con la búsqueda.'
-                  : `${visibles.length} de ${productos.length} objetos`}
-              </small>
-            )}
-          </label>
+          {/* Un solo campo: se puede escribir para filtrar o abrir la lista
+          y desplazarse para elegir */}
+          <SelectorObjeto
+            productos={productos}
+            valor={formulario.productoId}
+            onElegir={(id) => setFormulario({ ...formulario, productoId: id })}
+          />
         </>
       )}
 

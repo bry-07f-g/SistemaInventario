@@ -28,6 +28,11 @@ function Movimientos({ productos, movimientos, recargar }) {
   // Devuelve true si salió bien y false si hubo un problema.
   // Es "async" porque hay que esperar la respuesta del servidor.
   async function registrarEntrada(datos) {
+
+    // Borramos el mensaje anterior: así no se ve un "éxito" viejo mientras
+    // se guarda el nuevo ingreso.
+    setMensaje(null)
+
     const cantidad = Number(datos.cantidad)
 
     try {
@@ -101,6 +106,10 @@ function Movimientos({ productos, movimientos, recargar }) {
   // La regla "No hay suficientes productos" la aplica el BACKEND: es la que
   // protege de verdad (por ejemplo, si otra persona despachó hace un momento).
   async function registrarSalida(datos) {
+
+    // Igual que arriba: empezamos sin mensaje viejo en pantalla
+    setMensaje(null)
+
     const cantidad = Number(datos.cantidad)
 
     try {

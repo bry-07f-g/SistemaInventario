@@ -63,6 +63,12 @@ export function crearProducto(formulario) {
   return pedir('/api/productos', { method: 'POST', body: formulario })
 }
 
+// Edita un objeto. Igual que crear, recibe un FormData (texto + imagen
+// opcional). Usa PUT porque se reemplazan los datos del objeto "id".
+export function actualizarProducto(id, formulario) {
+  return pedir(`/api/productos/${id}`, { method: 'PUT', body: formulario })
+}
+
 export function eliminarProducto(id) {
   return pedir(`/api/productos/${id}`, { method: 'DELETE' })
 }

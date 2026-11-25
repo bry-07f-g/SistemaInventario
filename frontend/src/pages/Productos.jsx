@@ -3,7 +3,12 @@
 import { useState } from 'react'
 import BarraBusqueda from '../components/BarraBusqueda.jsx'
 import NombreResaltado from '../components/NombreResaltado.jsx'
-import { eliminarProducto, urlImagen } from '../services/api.js'
+import FormularioEditar from '../components/FormularioEditar.jsx'
+import {
+  actualizarProducto,
+  eliminarProducto,
+  urlImagen,
+} from '../services/api.js'
 import { estadoStock, filtrarPorNombre } from '../utils/inventario.js'
 
 // Esta página ya NO tiene su propia lista: la recibe de App por "props".
@@ -21,6 +26,9 @@ function Productos({ productos, recargar }) {
   // cambia este valor, y React vuelve a dibujar la lista al instante.
   const [busqueda, setBusqueda] = useState('')
 
+  // Id del producto que se está editando (null = ninguno). Solo uno a la vez.
+  const [editandoId, setEditandoId] = useState(null)
+
   // La lista que realmente se ve: solo los objetos cuyo nombre contiene lo
   // buscado. Si no hay nada escrito, son todos.
   const visibles = filtrarPorNombre(productos, busqueda)
@@ -30,9 +38,27 @@ function Productos({ productos, recargar }) {
     setAbiertoId(abiertoId === id ? null : id)
   }
 
-  // "Editar": todavía no hace nada. Lo conectaremos más adelante.
-  function editar(producto) {
-    console.log('Editar (pendiente):', producto.nombre)
+    // "Editar": abre el formulario de ese objeto (o lo cierra si ya estaba abierto)
+  function alternarEdicion(producto) {
+    setMensaje(null)
+    setEditandoId(editandoId === producto.id ? null : producto.id)
+  }
+
+  // Se ejecuta al pulsar "Guardar cambios" en el formulario de edición.
+  async function guardarEdicion(id, datos) {
+    try {
+      await actualizarProducto(id, datos)
+      // Volvemos a pedir la lista para ver los datos ya guardados
+      await recargar()
+      setEditandoId(null) // cerramos el formulario
+      setMensaje({ tipo: 'exito', texto: 'Cambios guardados.' })
+      return true
+    } catch (error) {
+      // Por ejemplo: "Ya existe un objeto llamado ...". El formulario
+      // queda abierto para corregirlo.
+      setMensaje({ tipo: 'error', texto: error.message })
+      return false
+    }
   }
 
   // "Eliminar": pide confirmación y borra el producto en el backend.
@@ -135,9 +161,17 @@ function Productos({ productos, recargar }) {
                     >
                       {abiertoId === producto.id ? 'Ocultar' : 'Ver'}
                     </button>
-                    <button className="boton" onClick={() => editar(producto)}>
-                      Editar
+                    <button className="boton" onClick={() => alternarEdicion(producto)}>
+                      {editandoId === producto.id ? 'Cerrar edición' : 'Editar'}
                     </button>
+                    {/* Formulario de edición: solo en el producto que se edita */}
+                    {editandoId === producto.id && (
+                      <FormularioEditar
+                        producto={producto}
+                        onGuardar={guardarEdicion}
+                        onCancelar={() => setEditandoId(null)}
+                      />
+                    )}
                     <button
                       className="boton boton--peligro"
                       onClick={() => eliminar(producto)}

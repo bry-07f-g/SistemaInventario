@@ -180,13 +180,13 @@ body {
 /* Modificador: cuando está agotado se pinta Blood Orange */
 .producto__cantidad--agotado {
   background: var(--color-peligro);
+}
 
-  /* Modificador: cuando queda poco ("próximo a agotar") se pinta ámbar.
+/* Modificador: cuando queda poco ("próximo a agotar") se pinta ámbar.
    El texto va oscuro porque el blanco no se lee bien sobre amarillo. */
-  .producto__cantidad--bajo {
-    background: var(--color-aviso);
-    color: var(--color-aviso-texto);
-  }
+.producto__cantidad--bajo {
+  background: var(--color-aviso);
+  color: var(--color-aviso-texto);
 }
 
 .producto__acciones {
@@ -198,6 +198,20 @@ body {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px dashed var(--color-principal);
+}
+
+/* Formulario de edición: aparece dentro de la fila del objeto */
+.formulario--editar {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-principal);
+}
+
+/* Fila con "Guardar cambios" y "Cancelar" lado a lado */
+.formulario__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 /* ===== 7) Botones ===== */

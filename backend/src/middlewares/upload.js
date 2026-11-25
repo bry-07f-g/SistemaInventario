@@ -4,8 +4,9 @@
 const crypto = require('crypto')
 const fs = require('fs')
 const multer = require('multer')
-const { CARPETA_UPLOADS } = require('../utils/archivos')
+const { CARPETA_UPLOADS, usaNube } = require('../utils/archivos')
 const { ErrorHttp } = require('../utils/errores')
+
 
 // Si la carpeta uploads no existe (por ejemplo, en otro computador), la crea
 fs.mkdirSync(CARPETA_UPLOADS, { recursive: true })
@@ -23,8 +24,11 @@ const EXTENSIONES = {
 
 const TAMANO_MAXIMO = 5 * 1024 * 1024 // 5 MB
 
-// Dónde y con qué nombre se guarda cada archivo
-const almacenamiento = multer.diskStorage({
+// Dónde y con qué nombre se guarda cada archivo.
+//  - Con Cloudinary: la imagen se queda un momento en la memoria y de ahí
+//    se sube a la nube (no se escribe nada en el disco del servidor).
+//  - Sin Cloudinary: se guarda en la carpeta uploads, con nombre único.
+const almacenamientoLocal = multer.diskStorage({
   destination: (req, archivo, siguiente) => siguiente(null, CARPETA_UPLOADS),
   filename: (req, archivo, siguiente) => {
     // Fecha + letras al azar = nombre único, así dos imágenes nunca se pisan
@@ -34,7 +38,7 @@ const almacenamiento = multer.diskStorage({
 })
 
 const multerImagen = multer({
-  storage: almacenamiento,
+  storage: usaNube() ? multer.memoryStorage() : almacenamientoLocal,
   limits: { fileSize: TAMANO_MAXIMO, files: 1, fields: 10 },
   // Se ejecuta antes de guardar: aquí rechazamos lo que no sea imagen
   fileFilter: (req, archivo, siguiente) => {

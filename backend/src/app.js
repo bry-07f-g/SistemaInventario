@@ -77,6 +77,13 @@ app.use((error, req, res, next) => {
     return res.status(estado).json({ mensaje })
   }
 
+  // Un ErrorHttp con código 5xx (por ejemplo 502 cuando Cloudinary no
+  // responde) también trae un mensaje pensado para la persona, y no tiene
+  // datos técnicos: se lo mostramos tal cual.
+  if (error instanceof ErrorHttp && estado >= 500) {
+    return res.status(estado).json({ mensaje: error.message })
+  }
+
   // Cualquier otro error SÍ es nuestro: el detalle técnico se queda en la
   // terminal y al usuario solo se le muestra un mensaje general.
   console.error(error)

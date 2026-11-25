@@ -5,10 +5,10 @@
 // Como usamos Express 5, no hace falta try/catch en todas partes para pasar
 // los errores: si una función async lanza un error, llega solo al manejador
 // de errores de app.js.
+const { guardarImagen, borrarImagen, descartarSubida } = require('../utils/archivos')
 const pool = require('../config/database')
 const { conTransaccion } = require('../utils/transaccion')
 const { ErrorHttp } = require('../utils/errores')
-const { borrarArchivo, borrarImagen } = require('../utils/archivos')
 const {
   textoObligatorio,
   textoOpcional,
@@ -42,6 +42,7 @@ async function crear(req, res) {
   // Si se envió imagen, multer ya la guardó en disco ANTES de llegar aquí.
   // Si algo falla más abajo, hay que borrarla para no dejar archivos huérfanos.
   const archivo = req.file
+  let imagen = null // lo que se guarda en la base: ruta local o dirección de Cloudinary
   let guardado = false // pasa a true cuando la base de datos ya confirmó
   let nombre
 
@@ -60,7 +61,8 @@ async function crear(req, res) {
     const entrego = textoObligatorio(cuerpo.entrego, 'quién entregó', 100)
     const recibio = textoObligatorio(cuerpo.recibio, 'quién recibió', 100)
     const observacion = textoOpcional(cuerpo.observacion, 'observación', 255)
-    const imagen = archivo ? `uploads/${archivo.filename}` : null
+    // Con todo validado, dejamos la imagen guardada (si se envió una)
+    if (archivo) imagen = await guardarImagen(archivo)
 
     // 2) Guardar el objeto y su primer ingreso, juntos
     const id = await conTransaccion(async (conexion) => {
@@ -88,7 +90,7 @@ async function crear(req, res) {
     res.status(201).json({ id, nombre, descripcion, cantidad, cantidad_minima: cantidadMinima, imagen })
   } catch (error) {
     // Si no se guardó nada, la imagen subida sobra: la borramos
-    if (archivo && !guardado) await borrarArchivo(archivo.path)
+    if (!guardado) await descartarSubida(archivo, imagen)
 
     // El nombre es UNIQUE en la base de datos: si ya existe, MySQL avisa
     // con este código. 409 = "conflicto".
@@ -107,6 +109,7 @@ async function crear(req, res) {
 // ---------------------------------------------------------------------
 async function actualizar(req, res) {
   const archivo = req.file // imagen nueva, si se envió
+  let imagenSubida = null
   let guardado = false
   let nombre
 
@@ -123,6 +126,9 @@ async function actualizar(req, res) {
       CANTIDAD_MAXIMA,
     )
 
+     // Con todo validado, guardamos la imagen nueva (si se envió una)
+    if (archivo) imagenSubida = await guardarImagen(archivo)
+
     const imagenAnterior = await conTransaccion(async (conexion) => {
       // "FOR UPDATE" bloquea la fila mientras dura la transacción, para que
       // nadie más la cambie al mismo tiempo.
@@ -133,7 +139,7 @@ async function actualizar(req, res) {
       if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
 
       // Si se envió imagen nueva la usamos; si no, se queda la que tenía
-      const imagenNueva = archivo ? `uploads/${archivo.filename}` : filas[0].imagen
+      const imagenNueva = archivo ? imagenSubida : filas[0].imagen
 
       await conexion.execute(
         // COALESCE(?, cantidad_minima) significa: "usa el valor nuevo; y si el
@@ -166,7 +172,7 @@ async function actualizar(req, res) {
     if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
     res.json(filas[0])
   } catch (error) {
-    if (archivo && !guardado) await borrarArchivo(archivo.path)
+    if (!guardado) await descartarSubida(archivo, imagenSubida)
 
     if (error.code === 'ER_DUP_ENTRY') {
       throw new ErrorHttp(409, `Ya existe un objeto llamado "${nombre}"`)

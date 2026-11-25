@@ -85,9 +85,14 @@ export function registrarMovimiento(datos) {
 
 // ---------- Imágenes ----------
 
-// En la base de datos solo se guarda la ruta ("uploads/123-ab.jpg").
-// Para mostrarla, la unimos con la dirección del servidor.
+// En la base de datos solo se guarda un texto con la ubicación de la imagen:
+//  - En tu computador es una ruta ("uploads/123-ab.jpg"): la unimos con la
+//    dirección del servidor.
+//  - Al desplegar, las imágenes viven en Cloudinary y el texto ya es una
+//    dirección completa ("https://res.cloudinary.com/..."): se usa tal cual.
 // Si el objeto no tiene imagen, devuelve null.
 export function urlImagen(ruta) {
-  return ruta ? `${API_URL}/${ruta}` : null
+  if (!ruta) return null
+  if (/^https?:\/\//.test(ruta)) return ruta
+  return `${API_URL}/${ruta}`
 }

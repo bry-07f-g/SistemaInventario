@@ -1,18 +1,25 @@
 import { useState } from 'react'
 import FormularioIngresar from '../components/FormularioIngresar.jsx'
 import FormularioDespachar from '../components/FormularioDespachar.jsx'
-import HistorialMovimientos from '../components/HistorialMovimientos.jsx'
 import { crearProducto, registrarMovimiento } from '../services/api.js'
 
 // Esta página es el "coordinador": decide qué formulario mostrar y le habla
 // al backend. Los formularios solo recogen lo que escribe la persona y se lo
 // entregan a las funciones registrarEntrada y registrarSalida.
 //  - productos: lista actual de objetos (viene del backend)
-//  - movimientos: historial (viene del backend)
 //  - recargar: vuelve a pedir los datos al backend después de un cambio
-function Movimientos({ productos, movimientos, recargar }) {
-  // Pestaña activa: 'ingresar' o 'despachar'
-  const [modo, setModo] = useState('ingresar')
+//  - permisos: qué puede hacer el usuario en este inventario
+//
+// VERSIÓN 2: solo aparecen las pestañas que el usuario tiene permitidas,
+// y el historial ahora tiene su propia página (botón "Historial").
+function Movimientos({ productos, recargar, permisos }) {
+  // Pestañas permitidas. App solo abre esta página si hay al menos una.
+  const modos = []
+  if (permisos.ingresar) modos.push('ingresar')
+  if (permisos.despachar) modos.push('despachar')
+
+  // Pestaña activa: empieza en la primera permitida
+  const [modo, setModo] = useState(modos[0])
 
   // Mensaje para la persona. Es un objeto: { tipo: 'exito' o 'error', texto }
   // null significa que no hay mensaje que mostrar.
@@ -134,35 +141,32 @@ function Movimientos({ productos, movimientos, recargar }) {
     }
   }
 
-  return (
+    return (
     <section>
-      <h2 className="pagina__titulo">Ingresar o despachar</h2>
+      <h2 className="pagina__titulo">
+        {modos.length > 1 ? 'Ingresar o despachar' : modo === 'ingresar' ? 'Ingresar' : 'Despachar'}
+      </h2>
 
-      {/* Selector de pestañas: Ingresar / Despachar */}
-      <div className="selector">
-        <button
-          type="button"
-          className={
-            modo === 'ingresar'
-              ? 'selector__opcion selector__opcion--activa'
-              : 'selector__opcion'
-          }
-          onClick={() => cambiarModo('ingresar')}
-        >
-          Ingresar
-        </button>
-        <button
-          type="button"
-          className={
-            modo === 'despachar'
-              ? 'selector__opcion selector__opcion--activa'
-              : 'selector__opcion'
-          }
-          onClick={() => cambiarModo('despachar')}
-        >
-          Despachar
-        </button>
-      </div>
+      {/* Selector de pestañas: solo si tiene las dos (si solo tiene una,
+          no hay nada que elegir) */}
+      {modos.length > 1 && (
+        <div className="selector">
+          {modos.map((opcion) => (
+            <button
+              key={opcion}
+              type="button"
+              className={
+                modo === opcion
+                  ? 'selector__opcion selector__opcion--activa'
+                  : 'selector__opcion'
+              }
+              onClick={() => cambiarModo(opcion)}
+            >
+              {opcion === 'ingresar' ? 'Ingresar' : 'Despachar'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Mensaje de éxito (verde) o de error (Blood Orange).
           La clase sale del tipo: "mensaje--exito" o "mensaje--error" */}
@@ -175,6 +179,8 @@ function Movimientos({ productos, movimientos, recargar }) {
         <FormularioIngresar
           productos={productos}
           onRegistrar={registrarEntrada}
+          // Crear un objeto nuevo exige crear E ingresar
+          puedeCrear={permisos.crear}
         />
       ) : (
         <FormularioDespachar
@@ -182,9 +188,6 @@ function Movimientos({ productos, movimientos, recargar }) {
           onRegistrar={registrarSalida}
         />
       )}
-
-      {/* El historial se ve siempre debajo */}
-      <HistorialMovimientos movimientos={movimientos} />
     </section>
   )
 }

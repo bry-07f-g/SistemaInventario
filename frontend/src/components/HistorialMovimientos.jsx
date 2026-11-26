@@ -1,11 +1,12 @@
 // Muestra la tabla con todas las entradas y salidas registradas.
+// VERSIÓN 2: también muestra qué usuario del sistema registró cada
+// movimiento ("Registró") y marca los despachos pendientes o cancelados
+// (se usarán con la app sin internet).
 // Recibe por props:
 //  - movimientos: la lista del historial (el más reciente va primero)
 function HistorialMovimientos({ movimientos }) {
   return (
     <section>
-      <h3 className="seccion__titulo">Historial de movimientos</h3>
-
       {/* Si todavía no hay nada, mostramos un mensaje en vez de una tabla vacía */}
       {movimientos.length === 0 ? (
         <p>Aún no hay movimientos registrados.</p>
@@ -22,6 +23,7 @@ function HistorialMovimientos({ movimientos }) {
                 <th>Entregó</th>
                 <th>Recibió</th>
                 <th>Observación</th>
+                <th>Registró</th>
               </tr>
             </thead>
             <tbody>
@@ -46,8 +48,15 @@ function HistorialMovimientos({ movimientos }) {
                     >
                       {m.tipo === 'entrada' ? 'Entrada' : 'Salida'}
                     </span>
+                    {/* Solo se marca lo que NO es normal ('aplicado') */}
+                    {m.estado === 'pendiente' && (
+                      <span className="etiqueta etiqueta--pendiente">Pendiente</span>
+                    )}
+                    {m.estado === 'cancelado' && (
+                      <span className="etiqueta etiqueta--cancelado">Cancelado</span>
+                    )}
                   </td>
-                                    <td>
+                  <td>
                     {m.producto_nombre}
                     {/* Si el objeto ya se eliminó, producto_id viene vacío (null) */}
                     {m.producto_id === null && (
@@ -58,6 +67,8 @@ function HistorialMovimientos({ movimientos }) {
                   <td>{m.entrego}</td>
                   <td>{m.recibio}</td>
                   <td>{m.observacion || '—'}</td>
+                  {/* Los movimientos de la versión 1 no tienen usuario */}
+                  <td>{m.usuario_nombre || '—'}</td>
                 </tr>
               ))}
             </tbody>

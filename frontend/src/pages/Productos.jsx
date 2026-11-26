@@ -12,10 +12,11 @@ import {
 } from '../services/api.js'
 import { estadoStock, filtrarPorNombre } from '../utils/inventario.js'
 
-// Esta página ya NO tiene su propia lista: la recibe de App por "props".
-//  - productos: la lista actual de objetos (viene del backend)
-//  - recargar: función que vuelve a pedir los datos al backend
-function Productos({ productos, recargar }) {
+//  - permisos: qué puede hacer el usuario en este inventario. Los botones
+//    Editar y Eliminar solo aparecen si tiene ese permiso. (Aunque alguien
+//    los "forzara", el backend igual lo rechazaría: la seguridad real está
+//    en el servidor; esto es para no mostrar botones que no sirven.)
+function Productos({ productos, recargar, permisos }) {
 
   // Guarda el id del producto cuyo detalle está abierto (null = ninguno).
   const [abiertoId, setAbiertoId] = useState(null)
@@ -168,16 +169,20 @@ async function confirmarEliminacion() {
                     >
                       {abiertoId === producto.id ? 'Ocultar' : 'Ver'}
                     </button>
-                    <button className="boton" onClick={() => alternarEdicion(producto)}>
-                      {editandoId === producto.id ? 'Cerrar edición' : 'Editar'}
-                    </button>
-                    
-                    <button
-                      className="boton boton--peligro"
-                      onClick={() => eliminar(producto)}
-                    >
-                      Eliminar
-                    </button>
+                                        {permisos.editar && (
+                      <button className="boton" onClick={() => alternarEdicion(producto)}>
+                        {editandoId === producto.id ? 'Cerrar edición' : 'Editar'}
+                      </button>
+                    )}
+
+                    {permisos.eliminar && (
+                      <button
+                        className="boton boton--peligro"
+                        onClick={() => eliminar(producto)}
+                      >
+                        Eliminar
+                      </button>
+                    )}
                     </div>   {/* cierra producto__acciones */}
                 </div>     {/* cierra producto__fila */}
 

@@ -18,9 +18,11 @@ const formularioVacio = {
 //  - onRegistrar: función de la página que guarda el ingreso.
 //    Es asíncrona: devuelve (más tarde) true si salió bien y entonces
 //    limpiamos el formulario.
-function FormularioIngresar({ productos, onRegistrar }) {
-  // ¿Objeto 'nuevo' o uno 'existente'?
-  const [tipoObjeto, setTipoObjeto] = useState('nuevo')
+//  - puedeCrear: si el usuario tiene permiso de CREAR objetos. Si no, solo
+//    puede sumar unidades a objetos que ya existen.
+function FormularioIngresar({ productos, onRegistrar, puedeCrear = true }) {
+  // ¿Objeto 'nuevo' o uno 'existente'? Sin permiso de crear, solo existente.
+  const [tipoObjeto, setTipoObjeto] = useState(puedeCrear ? 'nuevo' : 'existente')
 
   // Todos los campos de texto en un solo objeto
   const [formulario, setFormulario] = useState(formularioVacio)
@@ -86,7 +88,8 @@ function FormularioIngresar({ productos, onRegistrar }) {
 
   return (
     <form className="formulario" onSubmit={enviar}>
-      {/* ¿Objeto nuevo o ya existente? */}
+      {/* ¿Objeto nuevo o ya existente? (solo si puede crear) */}
+      {puedeCrear && (
       <fieldset className="formulario__radios">
         <legend>¿Qué vas a ingresar?</legend>
         <label>
@@ -110,6 +113,7 @@ function FormularioIngresar({ productos, onRegistrar }) {
           Objeto existente
         </label>
       </fieldset>
+      )}
 
       {/* Campos que dependen del tipo de objeto */}
       {tipoObjeto === 'nuevo' ? (

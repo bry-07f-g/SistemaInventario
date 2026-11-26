@@ -1,23 +1,78 @@
 // NavLink es un enlace que, además, sabe si es la página actual
 // (le agrega solo la clase "active" para que podamos resaltarlo).
 import { NavLink } from 'react-router-dom'
+import SelectorInventario from './SelectorInventario.jsx'
 
-function Header() {
+// Header de la versión 2. Recibe por props:
+//  - usuario: quién inició sesión (nombre, si es super admin, inventarios)
+//  - inventarioId / onCambiarInventario: empresa elegida y cómo cambiarla
+//  - puedeMover: si puede ingresar o despachar en la empresa elegida
+//  - onSalir: cerrar sesión
+function Header({ usuario, inventarioId, onCambiarInventario, puedeMover, onSalir }) {
   return (
     <header className="header">
-      {/* Saludo a la izquierda */}
-      <h1 className="header__saludo">Bienvenido a Forage</h1>
+      {/* Fila de arriba: saludo, quién soy y botón de salir */}
+      <div className="header__fila">
+        <h1 className="header__saludo">Bienvenido a Forage</h1>
+        <div className="header__usuario">
+          <span>
+            {usuario.nombre}
+            {usuario.esSuperAdmin && <span className="insignia">Super administrador</span>}
+          </span>
+          <button type="button" className="boton" onClick={onSalir}>
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
 
-      {/* Las dos opciones del menú */}
-      <nav className="header__nav">
-        <NavLink to="/movimientos" className="header__link">
-          1. Ingresar o despachar
-        </NavLink>
-        {/* "end" hace que "/" solo se marque en la página principal */}
-        <NavLink to="/" end className="header__link">
-          2. Visualizar inventario
-        </NavLink>
-      </nav>
+      {/* Fila de abajo: empresa y menú */}
+      <div className="header__fila">
+        {usuario.inventarios.length > 0 && (
+          <SelectorInventario
+            inventarios={usuario.inventarios}
+            valor={inventarioId}
+            onElegir={onCambiarInventario}
+          />
+        )}
+
+        {/* El menú solo existe si tiene algo que mostrar */}
+        {(inventarioId !== null || usuario.esSuperAdmin) && (
+          <nav className="header__nav">
+            {/* Opciones del inventario: solo si hay una empresa elegida.
+                <> </> agrupa varios elementos sin agregar nada a la página */}
+            {inventarioId !== null && (
+              <>
+                {/* Solo se muestra si puede ingresar o despachar aquí */}
+                {puedeMover && (
+                  <NavLink to="/movimientos" className="header__link">
+                    Ingresar o despachar
+                  </NavLink>
+                )}
+                {/* "end" hace que "/" solo se marque en la página principal */}
+                <NavLink to="/" end className="header__link">
+                  Visualizar inventario
+                </NavLink>
+                <NavLink to="/historial" className="header__link">
+                  Historial
+                </NavLink>
+              </>
+            )}
+
+            {/* Pantallas solo del super administrador (con otro estilo,
+                para distinguirlas de las del inventario) */}
+            {usuario.esSuperAdmin && (
+              <>
+                <NavLink to="/usuarios" className="header__link header__link--admin">
+                  Usuarios
+                </NavLink>
+                <NavLink to="/empresas" className="header__link header__link--admin">
+                  Empresas
+                </NavLink>
+              </>
+            )}
+          </nav>
+        )}
+      </div>
     </header>
   )
 }

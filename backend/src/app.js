@@ -8,6 +8,8 @@ const { ErrorHttp } = require('./utils/errores')
 const authRoutes = require('./routes/auth.routes')
 const productosRoutes = require('./routes/productos.routes')
 const movimientosRoutes = require('./routes/movimientos.routes')
+const inventariosRoutes = require('./routes/inventarios.routes')
+const usuariosRoutes = require('./routes/usuarios.routes')
 
 const app = express()
 
@@ -57,6 +59,10 @@ app.use('/api/productos', productosRoutes)
 
 // Rutas de movimientos: todo lo que empiece con /api/movimientos
 app.use('/api/movimientos', movimientosRoutes)
+
+// Rutas del super administrador: empresas y usuarios
+app.use('/api/inventarios', inventariosRoutes)
+app.use('/api/usuarios', usuariosRoutes)
 
 // Si ninguna ruta anterior respondió, esta atrapa la petición (error 404)
 app.use((req, res) => {

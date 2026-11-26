@@ -4,6 +4,11 @@
 //   1) cambiar la cantidad del producto (suma si es entrada, resta si es salida)
 //   2) anotar el movimiento en el historial
 // Por eso se hacen dentro de una transacción: o se guardan las dos, o ninguna.
+//
+// VERSIÓN 2: todo pasa dentro del inventario elegido (req.inventarioId) y
+// cada movimiento guarda qué usuario del sistema lo registró (req.usuario).
+// Los permisos ya los revisó la ruta: "ingresar" para las entradas y
+// "despachar" para las salidas.
 const pool = require('../config/database')
 const { conTransaccion } = require('../utils/transaccion')
 const { ErrorHttp } = require('../utils/errores')
@@ -13,11 +18,14 @@ const { textoObligatorio, textoOpcional, enteroPositivo, leerId } = require('../
 const CANTIDAD_MAXIMA = 1000000
 
 // Columnas que se devuelven de cada movimiento (así no repetimos la lista)
+//   usuario_nombre -> quién lo registró en el sistema
+//   estado         -> 'aplicado' (normal), 'pendiente' o 'cancelado'
+//                     (estos dos se usarán con la app sin internet)
 const COLUMNAS = `id, producto_id, producto_nombre, tipo, cantidad,
-                  entrego, recibio, observacion, fecha`
+                  entrego, recibio, observacion, usuario_nombre, estado, fecha`
 
 // ---------------------------------------------------------------------
-// GET /api/movimientos  ->  historial completo
+// GET /api/movimientos  ->  historial del inventario elegido
 //
 // Incluye los movimientos de objetos que ya fueron eliminados: ahí
 // "producto_id" viene vacío (null), pero "producto_nombre" sigue diciendo
@@ -28,7 +36,10 @@ async function listar(req, res) {
   // El más reciente primero. Si dos tienen la misma fecha (el DATETIME solo
   // llega hasta segundos), desempata el id: el más nuevo tiene el id mayor.
   const [filas] = await pool.query(
-    `SELECT ${COLUMNAS} FROM movimientos ORDER BY fecha DESC, id DESC`,
+    `SELECT ${COLUMNAS} FROM movimientos
+      WHERE inventario_id = ?
+      ORDER BY fecha DESC, id DESC`,
+    [req.inventarioId],
   )
   res.json(filas)
 }
@@ -71,9 +82,10 @@ async function registrar(req, res) {
     // transacción. Así, si dos personas despachan a la vez, la segunda
     // espera y ve la cantidad ya actualizada. Sin esto, las dos podrían
     // leer "10", sacar 8 cada una, y el stock quedaría en -6.
+    // "AND inventario_id = ?": solo objetos del inventario elegido.
     const [productos] = await conexion.execute(
-      'SELECT id, nombre, cantidad FROM productos WHERE id = ? FOR UPDATE',
-      [productoId],
+      'SELECT id, nombre, cantidad FROM productos WHERE id = ? AND inventario_id = ? FOR UPDATE',
+      [productoId, req.inventarioId],
     )
     if (productos.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
     const producto = productos[0]
@@ -104,13 +116,17 @@ async function registrar(req, res) {
       productoId,
     ])
 
-    // Guardamos también el nombre: si el objeto se elimina después, el
-    // historial seguirá diciendo qué era.
+    // Guardamos también el nombre del objeto y del usuario: si alguno se
+    // elimina después, el historial seguirá diciendo quién y qué fue.
     const [insercion] = await conexion.execute(
       `INSERT INTO movimientos
-         (producto_id, producto_nombre, tipo, cantidad, entrego, recibio, observacion)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [productoId, producto.nombre, tipo, cantidad, entrego, recibio, observacion],
+         (inventario_id, producto_id, producto_nombre, tipo, cantidad,
+          entrego, recibio, observacion, usuario_id, usuario_nombre)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.inventarioId, productoId, producto.nombre, tipo, cantidad,
+        entrego, recibio, observacion, req.usuario.id, req.usuario.nombre,
+      ],
     )
 
     // Leemos el movimiento recién guardado para devolverlo tal cual quedó

@@ -2,6 +2,15 @@
 // Las rutas (routes/productos.routes.js) deciden QUÉ función se ejecuta
 // según la dirección y el método (GET, POST...); aquí se hace el trabajo.
 //
+// VERSIÓN 2: cada objeto pertenece a un inventario (empresa). Antes de
+// llegar aquí, los middlewares de auth.js ya comprobaron que la persona
+// inició sesión y que tiene el permiso necesario en ese inventario, y
+// dejaron listos:
+//   req.usuario       -> quién hace la acción
+//   req.inventarioId  -> en qué inventario
+// Por eso TODAS las consultas llevan "AND inventario_id = ?": así nadie
+// puede tocar un objeto de otra empresa cambiando el número en la dirección.
+//
 // Como usamos Express 5, no hace falta try/catch en todas partes para pasar
 // los errores: si una función async lanza un error, llega solo al manejador
 // de errores de app.js.
@@ -20,26 +29,32 @@ const {
 // Tope para la cantidad: evita números absurdos y que al sumar se desborde
 const CANTIDAD_MAXIMA = 1000000
 
+// Columnas que se devuelven de cada objeto (así no repetimos la lista)
+const COLUMNAS = 'id, nombre, descripcion, cantidad, cantidad_minima, imagen'
+
 // ---------------------------------------------------------------------
-// GET /api/productos  ->  lista todos los objetos
+// GET /api/productos  ->  lista los objetos del inventario elegido
 // ---------------------------------------------------------------------
 async function listar(req, res) {
-  // La "imagen" es la ruta guardada (ej: "uploads/123-ab.jpg") o null.
-  // El frontend la une con la dirección del servidor para mostrarla.
+  // La "imagen" es la ruta guardada (ej: "uploads/123-ab.jpg"), la
+  // dirección de Cloudinary, o null.
   const [filas] = await pool.query(
-    'SELECT id, nombre, descripcion, cantidad, cantidad_minima, imagen FROM productos ORDER BY nombre',
+    `SELECT ${COLUMNAS} FROM productos WHERE inventario_id = ? ORDER BY nombre`,
+    [req.inventarioId],
   )
   res.json(filas)
 }
 
 // ---------------------------------------------------------------------
-// POST /api/productos  ->  crea un objeto NUEVO
+// POST /api/productos  ->  crea un objeto NUEVO en el inventario elegido
 //
 // Además de crear el objeto, anota su primer ingreso en el historial
-// (quién entregó, quién recibió). Las dos cosas van en una transacción.
+// (quién entregó, quién recibió y qué usuario lo registró). Las dos cosas
+// van en una transacción. Por eso la ruta exige los permisos crear E
+// ingresar.
 // ---------------------------------------------------------------------
 async function crear(req, res) {
-  // Si se envió imagen, multer ya la guardó en disco ANTES de llegar aquí.
+  // Si se envió imagen, multer ya la recibió ANTES de llegar aquí.
   // Si algo falla más abajo, hay que borrarla para no dejar archivos huérfanos.
   const archivo = req.file
   let imagen = null // lo que se guarda en la base: ruta local o dirección de Cloudinary
@@ -70,16 +85,20 @@ async function crear(req, res) {
       // NUNCA se pegan los datos directamente en el texto de la consulta:
       // eso permitiría un ataque llamado "inyección SQL".
       const [resultado] = await conexion.execute(
-        `INSERT INTO productos (nombre, descripcion, cantidad, cantidad_minima, imagen)
-         VALUES (?, ?, ?, ?, ?)`,
-        [nombre, descripcion, cantidad, cantidadMinima, imagen],
+        `INSERT INTO productos (inventario_id, nombre, descripcion, cantidad, cantidad_minima, imagen)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [req.inventarioId, nombre, descripcion, cantidad, cantidadMinima, imagen],
       )
 
       await conexion.execute(
         `INSERT INTO movimientos
-           (producto_id, producto_nombre, tipo, cantidad, entrego, recibio, observacion)
-         VALUES (?, ?, 'entrada', ?, ?, ?, ?)`,
-        [resultado.insertId, nombre, cantidad, entrego, recibio, observacion],
+           (inventario_id, producto_id, producto_nombre, tipo, cantidad,
+            entrego, recibio, observacion, usuario_id, usuario_nombre)
+         VALUES (?, ?, ?, 'entrada', ?, ?, ?, ?, ?, ?)`,
+        [
+          req.inventarioId, resultado.insertId, nombre, cantidad,
+          entrego, recibio, observacion, req.usuario.id, req.usuario.nombre,
+        ],
       )
 
       return resultado.insertId
@@ -92,10 +111,10 @@ async function crear(req, res) {
     // Si no se guardó nada, la imagen subida sobra: la borramos
     if (!guardado) await descartarSubida(archivo, imagen)
 
-    // El nombre es UNIQUE en la base de datos: si ya existe, MySQL avisa
-    // con este código. 409 = "conflicto".
+    // El nombre no se repite DENTRO del mismo inventario: si ya existe,
+    // MySQL avisa con este código. 409 = "conflicto".
     if (error.code === 'ER_DUP_ENTRY') {
-      throw new ErrorHttp(409, `Ya existe un objeto llamado "${nombre}"`)
+      throw new ErrorHttp(409, `Ya existe un objeto llamado "${nombre}" en este inventario`)
     }
     throw error
   }
@@ -126,15 +145,17 @@ async function actualizar(req, res) {
       CANTIDAD_MAXIMA,
     )
 
-     // Con todo validado, guardamos la imagen nueva (si se envió una)
+    // Con todo validado, guardamos la imagen nueva (si se envió una)
     if (archivo) imagenSubida = await guardarImagen(archivo)
 
     const imagenAnterior = await conTransaccion(async (conexion) => {
       // "FOR UPDATE" bloquea la fila mientras dura la transacción, para que
       // nadie más la cambie al mismo tiempo.
+      // "AND inventario_id = ?": un objeto de OTRA empresa se trata como si
+      // no existiera.
       const [filas] = await conexion.execute(
-        'SELECT imagen FROM productos WHERE id = ? FOR UPDATE',
-        [id],
+        'SELECT imagen FROM productos WHERE id = ? AND inventario_id = ? FOR UPDATE',
+        [id, req.inventarioId],
       )
       if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
 
@@ -165,17 +186,14 @@ async function actualizar(req, res) {
     // Ya se guardó la imagen nueva: la anterior sobra
     if (archivo) await borrarImagen(imagenAnterior)
 
-    const [filas] = await pool.execute(
-      'SELECT id, nombre, descripcion, cantidad, cantidad_minima, imagen FROM productos WHERE id = ?',
-      [id],
-    )
+    const [filas] = await pool.execute(`SELECT ${COLUMNAS} FROM productos WHERE id = ?`, [id])
     if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
     res.json(filas[0])
   } catch (error) {
     if (!guardado) await descartarSubida(archivo, imagenSubida)
 
     if (error.code === 'ER_DUP_ENTRY') {
-      throw new ErrorHttp(409, `Ya existe un objeto llamado "${nombre}"`)
+      throw new ErrorHttp(409, `Ya existe un objeto llamado "${nombre}" en este inventario`)
     }
     throw error
   }
@@ -185,15 +203,22 @@ async function actualizar(req, res) {
 // DELETE /api/productos/:id  ->  elimina un objeto
 //
 // Su historial se CONSERVA: en la base de datos, la llave foránea está en
-// "ON DELETE SET NULL", y cada movimiento ya guarda el nombre del objeto.
+// "ON DELETE SET NULL", y cada movimiento ya guarda el nombre del objeto
+// y el inventario al que pertenecía.
 // ---------------------------------------------------------------------
 async function eliminar(req, res) {
   const id = leerId(req.params.id)
 
-  const [filas] = await pool.execute('SELECT imagen FROM productos WHERE id = ?', [id])
+  const [filas] = await pool.execute(
+    'SELECT imagen FROM productos WHERE id = ? AND inventario_id = ?',
+    [id, req.inventarioId],
+  )
   if (filas.length === 0) throw new ErrorHttp(404, 'El objeto no existe')
 
-  await pool.execute('DELETE FROM productos WHERE id = ?', [id])
+  await pool.execute('DELETE FROM productos WHERE id = ? AND inventario_id = ?', [
+    id,
+    req.inventarioId,
+  ])
 
   // Con el objeto ya borrado, su imagen también sobra
   await borrarImagen(filas[0].imagen)

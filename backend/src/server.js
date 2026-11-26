@@ -18,6 +18,7 @@ const obligatorias = [
   'DB_USER',
   'DB_PASSWORD',
   'DB_NAME',
+  'JWT_SECRET',
 ]
 const faltantes = obligatorias.filter((nombre) => process.env[nombre] === undefined)
 
@@ -27,9 +28,17 @@ if (faltantes.length > 0) {
   process.exit(1) // cierra el programa; 1 = terminó con error
 }
 
+// El JWT_SECRET firma las sesiones: si es corto, se puede adivinar
+if (process.env.JWT_SECRET.length < 32) {
+  console.error('JWT_SECRET debe tener al menos 32 caracteres (usa uno largo y al azar).')
+  process.exit(1)
+}
+
 // 3) Solo ahora cargamos la app, porque ya existen las variables
 const app = require('./app')
 const pool = require('./config/database')
+
+const { asegurarSuperAdmin } = require('./utils/superAdmin')
 
 const PORT = Number(process.env.PORT) || 3000
 
@@ -57,7 +66,19 @@ async function iniciar() {
     process.exit(1)
   }
 
-  // 5) Encender el servidor.
+  // 5) Crear al super administrador si todavía no existe
+  try {
+    await asegurarSuperAdmin()
+  } catch (error) {
+    // Lo más común: la base no tiene la tabla usuarios (falta la migración)
+    console.error('No se pudo revisar el super administrador:', error.code || error.message)
+    if (error.code === 'ER_NO_SUCH_TABLE') {
+      console.error('Ejecuta backend/database/migracion_v2.sql en tu base de datos.')
+    }
+    process.exit(1)
+  }
+
+  // 6) Encender el servidor.
   //    No usamos el callback de app.listen porque en Express 5 también se
   //    ejecuta cuando hay un error. Escuchamos cada evento por separado:
   //    "listening" = ya está funcionando, "error" = algo falló.

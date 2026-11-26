@@ -5,6 +5,7 @@ const cors = require('cors')
 const pool = require('./config/database')
 const { CARPETA_UPLOADS } = require('./utils/archivos')
 const { ErrorHttp } = require('./utils/errores')
+const authRoutes = require('./routes/auth.routes')
 const productosRoutes = require('./routes/productos.routes')
 const movimientosRoutes = require('./routes/movimientos.routes')
 
@@ -30,6 +31,9 @@ app.use(
     setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
   }),
 )
+
+// Rutas de sesión: /api/auth/login y /api/auth/yo
+app.use('/api/auth', authRoutes)
 
 // Ruta de prueba: sirve para comprobar que el servidor y la base de datos
 // responden. Ábrela en el navegador: http://localhost:3000/api/salud

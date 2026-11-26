@@ -12,7 +12,7 @@ function Footer() {
       {/* Aviso de derechos de autor: © + año + titular + frase de reserva */}
       <p>© {anios} Bryan Franco Gomez. Todos los derechos reservados.</p>
       <p>
-        Sistema de Inventario v1.0 · Contacto:{' '}
+        Sistema de Inventario v2.0 · Contacto:{' '}
         <a href="mailto:francobryan524@gmail.com">francobryan524@gmail.com</a>
       </p>
     </footer>

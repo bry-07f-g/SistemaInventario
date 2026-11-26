@@ -284,7 +284,6 @@ function App() {
       <Route path="*" element={contenidoInventario} />
     </Routes>
   )
-  }
 
   return (
     <div className="app">
@@ -301,5 +300,5 @@ function App() {
       <Footer />
     </div>
   )
-
+}
 export default App

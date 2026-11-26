@@ -6,6 +6,8 @@ import Login from './pages/Login.jsx'
 import Productos from './pages/Productos.jsx'
 import Movimientos from './pages/Movimientos.jsx'
 import Historial from './pages/Historial.jsx'
+import Usuarios from './pages/Usuarios.jsx'
+import Empresas from './pages/Empresas.jsx'
 import {
   cerrarSesion,
   cuandoVenzaLaSesion,
@@ -139,6 +141,24 @@ function App() {
     setInventarioId(id)
   }
 
+    // Vuelve a preguntar "quién soy" SIN cambiar de pantalla. Lo usa la
+  // pantalla Empresas: si se crea, renombra o borra una empresa, el
+  // selector del header debe enterarse. Si la empresa que se estaba viendo
+  // ya no existe, pasa a la primera de la lista.
+  async function refrescarUsuario() {
+    const datos = await obtenerUsuarioActual()
+    setUsuario(datos)
+    const ids = datos.inventarios.map((inv) => inv.id)
+    if (!ids.includes(inventarioId)) {
+      const nuevo = ids[0] ?? null
+      elegirInventario(nuevo)
+      setProductos([])
+      setMovimientos([])
+      setCargando(nuevo !== null)
+      setInventarioId(nuevo)
+    }
+  }
+
   // "Reintentar": vuelve a preguntar quién soy (por si cambiaron mis
   // permisos o mis empresas) y recarga los datos.
   function reintentar() {
@@ -188,19 +208,20 @@ function App() {
   const permisos = inventario?.permisos
   const puedeMover = Boolean(permisos?.ingresar || permisos?.despachar)
 
-  let contenido
+    // Contenido del inventario elegido (inventario, movimientos, historial)
+  let contenidoInventario
   if (!inventario) {
-    contenido = (
+    contenidoInventario = (
       <p className="mensaje mensaje--error">
         {usuario.esSuperAdmin
-          ? 'Todavía no hay inventarios creados.'
+          ? 'Todavía no hay empresas. Crea la primera en la pantalla "Empresas".'
           : 'No tienes inventarios asignados. Habla con el administrador.'}
       </p>
     )
   } else if (cargando) {
-    contenido = <p>Cargando inventario...</p>
+    contenidoInventario = <p>Cargando inventario...</p>
   } else if (error) {
-    contenido = (
+    contenidoInventario = (
       <section>
         <p className="mensaje mensaje--error">{error}</p>
         <button type="button" className="boton" onClick={reintentar}>
@@ -211,7 +232,7 @@ function App() {
   } else {
     // key={inventarioId}: al cambiar de empresa, cada página se "reinicia"
     // (se cierran formularios abiertos, búsquedas, etc.)
-    contenido = (
+    contenidoInventario = (
       <Routes>
         <Route
           path="/"
@@ -251,6 +272,20 @@ function App() {
     )
   }
 
+  // Las pantallas del super admin NO dependen de la empresa elegida (por
+  // ejemplo, si todavía no hay empresas, debe poder entrar a crearlas).
+  // Por eso van en un primer nivel de rutas; todo lo demás ("*") es el
+  // contenido del inventario de arriba.
+  const soloAdmin = (pagina) => (usuario.esSuperAdmin ? pagina : <Navigate to="/" replace />)
+  const contenido = (
+    <Routes>
+      <Route path="/usuarios" element={soloAdmin(<Usuarios />)} />
+      <Route path="/empresas" element={soloAdmin(<Empresas onCambio={refrescarUsuario} />)} />
+      <Route path="*" element={contenidoInventario} />
+    </Routes>
+  )
+  }
+
   return (
     <div className="app">
       <Header
@@ -266,6 +301,5 @@ function App() {
       <Footer />
     </div>
   )
-}
 
 export default App

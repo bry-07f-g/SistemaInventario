@@ -726,3 +726,144 @@ body {
   background: #e0e0e0;
   color: #555;
 }
+
+/* ===================================================================
+   VERSIÓN 2 (paso 4b): pantallas de Usuarios y Empresas
+   =================================================================== */
+
+/* Botones del menú que solo ve el super admin: borde punteado */
+.header__link--admin {
+  border-style: dashed;
+}
+
+/* Título de la página con un botón a la derecha ("Nuevo usuario") */
+.pagina__encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pagina__encabezado .pagina__titulo {
+  margin-bottom: 4px;
+}
+
+/* Nombre + correo de cada usuario (o nombre + descripción de la empresa) */
+.usuario__datos {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.usuario__datos p {
+  margin: 0;
+  overflow-wrap: anywhere; /* correos largos no rompen la fila */
+}
+
+.usuario__etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* El formulario de usuario necesita más ancho por la tabla de permisos */
+.formulario--ancho {
+  max-width: 820px;
+  margin-bottom: 20px;
+}
+
+/* Casilla con texto al lado (ej. "Cuenta activa") */
+.casilla {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.casilla input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--color-principal);
+}
+
+.casilla small {
+  display: block;
+}
+
+/* ----- Permisos por empresa ----- */
+.permisos {
+  border: 2px solid #d9d4cf;
+  border-radius: var(--radio);
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0; /* deja que la tabla se deslice en pantallas pequeñas */
+}
+
+.permisos legend {
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+/* Explicación de cada permiso */
+.permisos__leyenda {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.permisos__leyenda dt {
+  font-weight: 700;
+  color: var(--color-principal);
+}
+
+.permisos__leyenda dd {
+  margin: 0;
+}
+
+.tabla--permisos th,
+.tabla--permisos td {
+  text-align: center;
+}
+
+.tabla--permisos th:first-child,
+.tabla--permisos td:first-child {
+  text-align: left;
+}
+
+.tabla--permisos input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-principal);
+  cursor: pointer;
+}
+
+/* ----- Cambiar contraseña de un usuario ----- */
+.contrasena-nueva {
+  border-top: 2px dashed #d9d4cf;
+  padding-top: 12px;
+}
+
+.contrasena-nueva h4 {
+  margin: 0 0 4px;
+}
+
+.contrasena-nueva__fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.contrasena-nueva__fila input {
+  flex: 1 1 200px;
+  padding: 8px 10px;
+  border: 2px solid #d9d4cf;
+  border-radius: 8px;
+  font: inherit;
+}

@@ -35,21 +35,41 @@ function Header({ usuario, inventarioId, onCambiarInventario, puedeMover, onSali
           />
         )}
 
-        {inventarioId !== null && (
+        {/* El menú solo existe si tiene algo que mostrar */}
+        {(inventarioId !== null || usuario.esSuperAdmin) && (
           <nav className="header__nav">
-            {/* Solo se muestra si puede ingresar o despachar aquí */}
-            {puedeMover && (
-              <NavLink to="/movimientos" className="header__link">
-                Ingresar o despachar
-              </NavLink>
+            {/* Opciones del inventario: solo si hay una empresa elegida.
+                <> </> agrupa varios elementos sin agregar nada a la página */}
+            {inventarioId !== null && (
+              <>
+                {/* Solo se muestra si puede ingresar o despachar aquí */}
+                {puedeMover && (
+                  <NavLink to="/movimientos" className="header__link">
+                    Ingresar o despachar
+                  </NavLink>
+                )}
+                {/* "end" hace que "/" solo se marque en la página principal */}
+                <NavLink to="/" end className="header__link">
+                  Visualizar inventario
+                </NavLink>
+                <NavLink to="/historial" className="header__link">
+                  Historial
+                </NavLink>
+              </>
             )}
-            {/* "end" hace que "/" solo se marque en la página principal */}
-            <NavLink to="/" end className="header__link">
-              Visualizar inventario
-            </NavLink>
-            <NavLink to="/historial" className="header__link">
-              Historial
-            </NavLink>
+
+            {/* Pantallas solo del super administrador (con otro estilo,
+                para distinguirlas de las del inventario) */}
+            {usuario.esSuperAdmin && (
+              <>
+                <NavLink to="/usuarios" className="header__link header__link--admin">
+                  Usuarios
+                </NavLink>
+                <NavLink to="/empresas" className="header__link header__link--admin">
+                  Empresas
+                </NavLink>
+              </>
+            )}
           </nav>
         )}
       </div>

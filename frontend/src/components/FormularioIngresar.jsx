@@ -88,7 +88,8 @@ function FormularioIngresar({ productos, onRegistrar, puedeCrear = true }) {
 
   return (
     <form className="formulario" onSubmit={enviar}>
-      {/* ¿Objeto nuevo o ya existente? */}
+      {/* ¿Objeto nuevo o ya existente? (solo si puede crear) */}
+      {puedeCrear && (
       <fieldset className="formulario__radios">
         <legend>¿Qué vas a ingresar?</legend>
         <label>
@@ -112,6 +113,7 @@ function FormularioIngresar({ productos, onRegistrar, puedeCrear = true }) {
           Objeto existente
         </label>
       </fieldset>
+      )}
 
       {/* Campos que dependen del tipo de objeto */}
       {tipoObjeto === 'nuevo' ? (

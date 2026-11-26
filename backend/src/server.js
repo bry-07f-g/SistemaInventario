@@ -38,7 +38,7 @@ if (process.env.JWT_SECRET.length < 32) {
 const app = require('./app')
 const pool = require('./config/database')
 
-const { asegurarSuperAdmin } = require('./utils/superAdmin')
+const { asegurarSuperAdmin, reiniciarContrasena } = require('./utils/superAdmin')
 
 const PORT = Number(process.env.PORT) || 3000
 
@@ -69,6 +69,17 @@ async function iniciar() {
   // 5) Crear al super administrador si todavía no existe
   try {
     await asegurarSuperAdmin()
+
+    // Recuperar la contraseña del super admin SIN terminal (útil en Render,
+    // donde el plan gratis no tiene consola): se pone la contraseña nueva en
+    // SUPERADMIN_PASSWORD y SUPERADMIN_REINICIAR=true. Al arrancar se aplica.
+    // Después hay que BORRAR SUPERADMIN_REINICIAR, o cerraría las sesiones
+    // del super admin en cada reinicio.
+    if (process.env.SUPERADMIN_REINICIAR === 'true') {
+      await reiniciarContrasena()
+      console.warn('Contraseña del super administrador reiniciada. Borra la variable SUPERADMIN_REINICIAR.')
+    }
+
   } catch (error) {
     // Lo más común: la base no tiene la tabla usuarios (falta la migración)
     console.error('No se pudo revisar el super administrador:', error.code || error.message)

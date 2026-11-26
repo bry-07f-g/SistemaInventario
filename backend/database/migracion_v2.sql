@@ -74,8 +74,12 @@ VALUES (
 ALTER TABLE productos
 ADD COLUMN inventario_id INT NOT NULL DEFAULT 1 AFTER id;
 
+-- (TiDB no permite crear una columna y su UNIQUE en el mismo paso:
+--  primero la columna, luego el índice único)
 ALTER TABLE productos
-ADD COLUMN uuid_cliente CHAR(36) NULL UNIQUE AFTER imagen;
+ADD COLUMN uuid_cliente CHAR(36) NULL AFTER imagen;
+
+ALTER TABLE productos ADD UNIQUE INDEX uuid_cliente (uuid_cliente);
 
 -- Quitamos el UNIQUE viejo (el nombre no se repetía en TODO el sistema;
 -- MySQL lo llamó "nombre") y ponemos el nuevo: no se repite DENTRO del
@@ -116,7 +120,9 @@ ALTER TABLE movimientos
 ADD COLUMN registrado_en DATETIME DEFAULT CURRENT_TIMESTAMP AFTER fecha;
 
 ALTER TABLE movimientos
-ADD COLUMN uuid_cliente CHAR(36) NULL UNIQUE AFTER registrado_en;
+ADD COLUMN uuid_cliente CHAR(36) NULL AFTER registrado_en;
+
+ALTER TABLE movimientos ADD UNIQUE INDEX uuid_cliente (uuid_cliente);
 
 -- Para los movimientos viejos, "registrado" = cuando ocurrieron.
 UPDATE movimientos SET registrado_en = fecha WHERE id > 0;

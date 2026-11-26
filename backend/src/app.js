@@ -13,6 +13,11 @@ const usuariosRoutes = require('./routes/usuarios.routes')
 
 const app = express()
 
+// En Render, las peticiones llegan a través de un "proxy" (un intermediario).
+// Esto le dice a Express que confíe en él para saber la IP real de quien
+// se conecta (la usa el límite de intentos del login).
+app.set('trust proxy', 1)
+
 // CORS: el navegador bloquea por seguridad que una página (el frontend, en
 // el puerto 5173) hable con otro servidor (este backend, en el 3000).
 // Con esto le decimos que SOLO la dirección del frontend tiene permiso.

@@ -162,7 +162,10 @@ body {
 }
 
 .producto__nombre {
-  flex: 1; /* ocupa el espacio sobrante, empuja lo demás a la derecha */
+  /* Ocupa el espacio sobrante y empuja lo demás a la derecha. El 180px es
+  su ancho mínimo "cómodo": si no cabe, la etiqueta de cantidad baja a
+  otra línea en vez de aplastar el nombre (pasaba en celular). */
+  flex: 1 1 180px;
   font-weight: 700;
   font-size: 1.05rem;
 }
@@ -866,4 +869,50 @@ body {
   border: 2px solid #d9d4cf;
   border-radius: 8px;
   font: inherit;
+}
+
+/* ===================================================================
+   FONDO DECORATIVO (líneas de datos y columnas de luz, colores Forage)
+   Es una capa "pegada" a la ventana (position: fixed): el contenido
+   sube y baja con el scroll y el fondo se queda quieto detrás.
+   - Computador: public/fondo.svg (horizontal)
+   - Celular:    public/fondo-movil.svg (vertical: arriba liso, abajo líneas)
+   =================================================================== */
+body {
+  position: relative;
+  z-index: 0; /* crea una "capa" propia para que el fondo quede detrás */
+  background: #1e1b19; /* el mismo oscuro del dibujo (por si tarda en cargar) */
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0; /* ocupa toda la ventana */
+  z-index: -1; /* detrás de todo el contenido */
+  pointer-events: none; /* no estorba a los clics */
+  background: #1e1b19 url("/fondo.svg") center bottom / cover no-repeat;
+}
+
+/* En pantallas pequeñas se usa el dibujo vertical */
+@media (max-width: 600px) {
+  body::before {
+    background-image: url("/fondo-movil.svg");
+  }
+}
+
+/* El header necesita su propio color: antes "se veía" el fondo claro de
+   la página a través de él; ahora detrás está el fondo oscuro. */
+.header {
+  background: var(--color-fondo-pagina);
+}
+
+/* El login deja ver el fondo alrededor de la tarjeta */
+.login {
+  background: transparent;
+}
+
+/* Las pantallas de "Cargando..." y error sin sesión van sobre el fondo
+   oscuro: su texto debe ser claro. */
+.pantalla-centrada {
+  color: #ffffff;
 }

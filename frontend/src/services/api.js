@@ -242,6 +242,27 @@ export function cambiarContrasenaUsuario(id, password) {
 export function eliminarUsuario(id) {
   return escribir({ tipo: 'eliminarUsuario', objetivoId: id, datos: {} })
 }
+// ---------- Despachos pendientes (solo CON internet) ----------
+//
+// Un despacho queda "pendiente" cuando se hizo sin conexión y al
+// sincronizar ya no alcanzaba el stock. Confirmarlo o cancelarlo necesita
+// el stock REAL del servidor, por eso solo se puede con internet.
+function soloConInternet(tipo, id) {
+  if (!estadoConexion().enLinea) {
+    return Promise.reject(
+      new Error('Necesitas conexión a internet para confirmar o cancelar un envío pendiente.'),
+    )
+  }
+  return ejecutarAccion({ tipo, inventarioId: inventarioActual(), objetivoId: id, datos: {} })
+}
+
+export function confirmarEnvio(id) {
+  return soloConInternet('confirmarPendiente', id)
+}
+
+export function cancelarEnvio(id) {
+  return soloConInternet('cancelarPendiente', id)
+}
 
 // ---------- Imágenes ----------
 //

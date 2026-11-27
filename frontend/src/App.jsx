@@ -139,7 +139,7 @@ function App() {
     window.addEventListener('inventario:sincronizado', alSincronizar)
     return () => window.removeEventListener('inventario:sincronizado', alSincronizar)
   }, [entrar, cargarDatos])
-  
+
   // Cada vez que cambia el inventario elegido, se cargan sus datos
   useEffect(() => {
     if (inventarioId === null) return
@@ -280,7 +280,14 @@ function App() {
         />
         <Route
           path="/historial"
-          element={<Historial key={inventarioId} movimientos={movimientos} />}
+          element={
+            <Historial
+              key={inventarioId}
+              movimientos={movimientos}
+              permisos={permisos}
+              recargar={cargarDatos}
+            />
+          }
         />
         {/* Cualquier otra dirección vuelve al inventario */}
         <Route path="*" element={<Navigate to="/" replace />} />

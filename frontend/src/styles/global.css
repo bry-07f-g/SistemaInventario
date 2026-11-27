@@ -917,10 +917,6 @@ body::before {
   color: #ffffff;
 }
 
-.pantalla-centrada {
-  color: #ffffff;
-}
-
 /* ===================================================================
    APP SIN INTERNET: indicador de conexión y cambios pendientes
    =================================================================== */
@@ -1069,4 +1065,42 @@ body::before {
 .etiqueta--conflicto {
   background: var(--color-peligro-suave);
   color: var(--color-peligro);
+}
+
+/* ----- Paso 5c: corregir conflictos y envíos pendientes ----- */
+
+/* Formulario para corregir un cambio que falló (dentro del modal) */
+.correccion {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.correccion .campo {
+  margin: 0;
+}
+
+/* Botones "Confirmar envío" y "Cancelar" en la tabla del historial */
+/* Uno debajo del otro y del mismo ancho, para que la tabla no crezca tanto */
+.historial__acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.historial__acciones .boton {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+/* La celda de las acciones con menos relleno a los lados */
+.tabla td.historial__celda-acciones {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* El aviso de envíos pendientes va separado de la tabla */
+.pagina__titulo + .mensaje--aviso {
+  margin-bottom: 12px;
 }

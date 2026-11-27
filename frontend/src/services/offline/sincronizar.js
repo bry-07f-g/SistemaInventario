@@ -49,8 +49,67 @@ export async function reintentar(orden) {
   const item = (await listarCola()).find((i) => i.orden === orden)
   if (!item) return
   await guardar('cola', orden, { ...item, estado: 'pendiente', error: null })
+  await reactivarDependientes()
   await contarCola()
   sincronizar()
+}
+
+// "Corregir y reintentar": cambia algunos datos del cambio que falló
+// (por ejemplo, otro nombre si el que tenía ya existe) y lo vuelve a
+// poner en la cola.
+//   cambios = { nombre: 'Casco 2' }, { cantidad: 3 }, { email: '...' }...
+export async function corregir(orden, cambios) {
+  const item = (await listarCola()).find((i) => i.orden === orden)
+  if (!item) return
+  const datos = { ...item.datos, ...cambios }
+  const corregido = {
+    ...item,
+    datos,
+    descripcion: nuevaDescripcion(item, datos),
+    estado: 'pendiente',
+    error: null,
+  }
+  // Si otra persona editó el objeto mientras tanto, la persona ya decidió:
+  // sus cambios se guardan ENCIMA (se deja de comparar la versión)
+  if (item.error?.codigo === 'EDITADO_POR_OTRO') delete corregido.version
+  await guardar('cola', orden, corregido)
+  await reactivarDependientes()
+  await contarCola()
+  sincronizar()
+}
+
+// Texto del cambio con los datos corregidos
+function nuevaDescripcion(item, datos) {
+  const nombre = String(datos.nombre ?? '').trim()
+  switch (item.tipo) {
+    case 'crearProducto':
+      return `Crear "${nombre}" con ${datos.cantidad} unidades`
+    case 'editarProducto':
+      return `Editar "${nombre}"`
+    case 'movimiento':
+      // "Despachar 5 de ..." -> "Despachar 3 de ..."
+      return item.descripcion.replace(/^(Ingresar|Despachar) \d+/, `$1 ${datos.cantidad}`)
+    case 'crearInventario':
+      return `Crear la empresa "${nombre}"`
+    case 'editarInventario':
+      return `Editar la empresa "${nombre}"`
+    case 'crearUsuario':
+      return `Crear el usuario "${nombre}"`
+    case 'editarUsuario':
+      return `Editar el usuario "${nombre}"`
+    default:
+      return item.descripcion
+  }
+}
+
+// Los cambios que fallaron SOLO porque dependían de otro (codigo
+// 'DEPENDE') vuelven a la cola: si el otro ya se corrigió, ahora pasarán.
+async function reactivarDependientes() {
+  for (const item of await listarCola()) {
+    if (item.estado === 'error' && item.error?.codigo === 'DEPENDE') {
+      await guardar('cola', item.orden, { ...item, estado: 'pendiente', error: null })
+    }
+  }
 }
 
 // ¿Hay cambios pendientes de ESTE usuario? (mientras haya, se muestran los
@@ -129,17 +188,27 @@ function resolverIds(item, mapa) {
 }
 
 let enCurso = null
+let repetir = false
 
 // Envía, en orden, los cambios pendientes del usuario de la sesión.
 // Al terminar, avisa a la app con el evento "inventario:sincronizado"
 // y un resumen: cuántos se aplicaron, cuáles fallaron y los avisos
 // (por ejemplo, despachos que quedaron pendientes por falta de stock).
+//
+// Si piden sincronizar mientras ya se está sincronizando (por ejemplo, al
+// corregir un cambio), se anota y se hace otra vuelta al terminar.
 export function sincronizar() {
-  if (!enCurso) {
-    enCurso = ejecutarSincronizacion().finally(() => {
-      enCurso = null
-    })
+  if (enCurso) {
+    repetir = true
+    return enCurso
   }
+  enCurso = ejecutarSincronizacion().finally(() => {
+    enCurso = null
+    if (repetir) {
+      repetir = false
+      sincronizar()
+    }
+  })
   return enCurso
 }
 

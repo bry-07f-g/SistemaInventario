@@ -4,7 +4,13 @@
 // (se usarán con la app sin internet).
 // Recibe por props:
 //  - movimientos: la lista del historial (el más reciente va primero)
-function HistorialMovimientos({ movimientos }) {
+//  - acciones: (opcional) para los despachos PENDIENTES. Si viene, se
+//    agrega la columna "Acciones" con "Confirmar envío" y "Cancelar".
+//    { deshabilitado, procesandoId, onConfirmar(m), onCancelar(m) }
+function HistorialMovimientos({ movimientos, acciones = null }) {
+  // La columna solo aparece si hay algún pendiente y se pueden resolver
+  const conAcciones = acciones !== null && movimientos.some((m) => m.estado === 'pendiente')
+
   return (
     <section>
       {/* Si todavía no hay nada, mostramos un mensaje en vez de una tabla vacía */}
@@ -24,6 +30,7 @@ function HistorialMovimientos({ movimientos }) {
                 <th>Recibió</th>
                 <th>Observación</th>
                 <th>Registró</th>
+                {conAcciones && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
@@ -69,6 +76,30 @@ function HistorialMovimientos({ movimientos }) {
                   <td>{m.observacion || '—'}</td>
                   {/* Los movimientos de la versión 1 no tienen usuario */}
                   <td>{m.usuario_nombre || '—'}</td>
+                  {conAcciones && (
+                    <td className="historial__celda-acciones">
+                      {m.estado === 'pendiente' && (
+                        <div className="historial__acciones">
+                          <button
+                            type="button"
+                            className="boton boton--principal"
+                            disabled={acciones.deshabilitado}
+                            onClick={() => acciones.onConfirmar(m)}
+                          >
+                            {acciones.procesandoId === m.id ? 'Confirmando...' : 'Confirmar envío'}
+                          </button>
+                          <button
+                            type="button"
+                            className="boton boton--peligro"
+                            disabled={acciones.deshabilitado}
+                            onClick={() => acciones.onCancelar(m)}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

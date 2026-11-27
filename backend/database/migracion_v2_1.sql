@@ -12,15 +12,22 @@
 --    Si alguien edita sin internet un objeto que otra persona editó
 --    mientras tanto, al sincronizar se nota (las versiones no coinciden)
 --    y se le avisa en vez de pisar el cambio del otro.
+--
+-- (TiDB no permite crear una columna y su UNIQUE en el mismo paso:
+--  por eso primero se crea la columna y después el índice único.)
 -- =====================================================================
 
 USE inventario_db;
 
 ALTER TABLE inventarios
-ADD COLUMN uuid_cliente CHAR(36) NULL UNIQUE AFTER descripcion;
+ADD COLUMN uuid_cliente CHAR(36) NULL AFTER descripcion;
+
+ALTER TABLE inventarios ADD UNIQUE INDEX uuid_cliente (uuid_cliente);
 
 ALTER TABLE usuarios
-ADD COLUMN uuid_cliente CHAR(36) NULL UNIQUE AFTER version_sesion;
+ADD COLUMN uuid_cliente CHAR(36) NULL AFTER version_sesion;
+
+ALTER TABLE usuarios ADD UNIQUE INDEX uuid_cliente (uuid_cliente);
 
 ALTER TABLE productos
 ADD COLUMN version_datos INT NOT NULL DEFAULT 0 AFTER imagen;

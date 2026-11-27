@@ -27,6 +27,8 @@ function permisoSegunTipo(req, res, next) {
 // GET  /api/movimientos  -> historial del inventario (el más reciente primero)
 router.get('/', exigirPermiso('ver'), controlador.listar)
 
+// POST /api/movimientos  -> registra una entrada o una salida
+router.post('/', permisoSegunTipo, controlador.registrar)
 
 // Despachos PENDIENTES (quedan así cuando, al sincronizar la app sin
 // internet, no alcanzaba el stock). Confirmar o cancelar es despachar.

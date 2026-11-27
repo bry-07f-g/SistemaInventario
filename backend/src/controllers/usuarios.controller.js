@@ -196,11 +196,12 @@ async function crear(req, res) {
     const usuario = await buscarUsuario(id, false)
     res.status(201).json({ ...formatoUsuario(usuario), permisos: await permisosDe(id) })
   } catch (error) {
-        // Llegó dos veces a la vez: si el uuid ya quedó guardado, devolvemos ese
+    // Llegó dos veces a la vez: si el uuid ya quedó guardado, devolvemos ese
     if (uuid && error.code === 'ER_DUP_ENTRY') {
       const existente = await usuarioPorUuid(uuid)
       if (existente) return res.status(200).json(existente)
     }
+    revisarDuplicado(error, email)
   }
 }
 

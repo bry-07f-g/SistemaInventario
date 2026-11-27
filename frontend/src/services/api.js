@@ -1,237 +1,255 @@
-// Aquí vive TODA la comunicación con el backend. Los demás archivos no usan
-// "fetch" directamente: llaman a las funciones de este archivo. Así, si algún
-// día cambia la dirección del servidor, solo se toca este lugar.
+// Aquí vive TODA la comunicación de las pantallas con los datos. Las
+// páginas llaman a estas funciones y no saben si hay internet o no:
 //
-// VERSIÓN 2: además, este archivo recuerda la SESIÓN:
-//   - el token (la "manilla" que el backend entrega al iniciar sesión)
-//   - el inventario (empresa) con el que se está trabajando
-// y los envía solos en cada petición, en los encabezados:
-//   Authorization: Bearer <token>
-//   X-Inventario-Id: <id>
-
-// Dirección del backend. "import.meta.env.VITE_API_URL" lee una variable de
-// entorno de Vite (en Vercel apunta a Render). Si no existe, usamos la de
-// tu computador.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
-// ---------- Sesión guardada en el navegador ----------
+//  - CON internet: se habla con el servidor (como antes) y, de paso, se
+//    guarda una copia de los datos en el equipo.
+//  - SIN internet: se leen los datos guardados, los cambios se aplican en
+//    el equipo y quedan en una cola. Al volver la conexión se envían solos
+//    (services/offline/sincronizar.js).
 //
-// localStorage guarda textos en el navegador y NO se borran al cerrar la
-// pestaña: así no hay que iniciar sesión cada vez que se abre la página.
-// Se usa con try/catch porque algunos navegadores (modo privado estricto)
-// lo bloquean; en ese caso la sesión dura solo mientras la pestaña esté
-// abierta.
-const CLAVE_TOKEN = 'inventario_token'
-const CLAVE_INVENTARIO = 'inventario_actual'
-
-function leerGuardado(clave) {
-  try {
-    return localStorage.getItem(clave)
-  } catch {
-    return null
-  }
-}
-
-function guardar(clave, valor) {
-  try {
-    if (valor === null) localStorage.removeItem(clave)
-    else localStorage.setItem(clave, valor)
-  } catch {
-    // Sin localStorage: no pasa nada, se usa solo la memoria
-  }
-}
-
-// Copias en memoria (más rápidas que leer localStorage cada vez)
-let token = leerGuardado(CLAVE_TOKEN)
-let inventarioId = leerGuardado(CLAVE_INVENTARIO)
-
-export function hayToken() {
-  return Boolean(token)
-}
-
-export function guardarToken(nuevo) {
-  token = nuevo
-  guardar(CLAVE_TOKEN, nuevo)
-}
-
-export function inventarioGuardado() {
-  return inventarioId ? Number(inventarioId) : null
-}
-
-export function elegirInventario(id) {
-  inventarioId = id === null ? null : String(id)
-  guardar(CLAVE_INVENTARIO, inventarioId)
-}
-
-// App registra aquí qué hacer cuando la sesión deja de servir (por
-// ejemplo, el administrador desactivó al usuario): volver al login.
-let alVencerSesion = () => {}
-export function cuandoVenzaLaSesion(funcion) {
-  alVencerSesion = funcion
-}
-
-// ---------- Función base ----------
-//
-// Hace la petición y deja listo el resultado.
-//  - Si todo sale bien, devuelve los datos (ya convertidos de JSON).
-//  - Si el servidor responde con un error, lanza un Error con el mensaje
-//    que el backend escribió (por ejemplo "No hay suficientes productos...").
-//  - Si ni siquiera se pudo conectar, lanza un Error explicándolo.
-async function pedir(ruta, opciones = {}) {
-  // Encabezados que van en TODAS las peticiones (si existen)
-  const encabezados = { ...opciones.headers }
-  if (token) encabezados.Authorization = `Bearer ${token}`
-  if (inventarioId) encabezados['X-Inventario-Id'] = inventarioId
-
-  let respuesta
-  try {
-    respuesta = await fetch(`${API_URL}${ruta}`, { ...opciones, headers: encabezados })
-  } catch {
-    // fetch solo falla así cuando no hay conexión con el servidor
-    throw new Error(
-      'No se pudo conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.',
-    )
-  }
-
-  // 204 = "hecho, sin nada que devolver" (así responde eliminar)
-  if (respuesta.status === 204) return null
-
-  // Intentamos leer el JSON; si la respuesta no trae uno, queda en null
-  let datos
-  try {
-    datos = await respuesta.json()
-  } catch {
-    datos = null
-  }
-
-  // 401 con un token puesto = la sesión ya no sirve (venció, cambiaron la
-  // contraseña, desactivaron la cuenta...). Se borra y se vuelve al login.
-  if (respuesta.status === 401 && token) {
-    guardarToken(null)
-    alVencerSesion(datos?.mensaje || 'Tu sesión terminó. Inicia sesión de nuevo.')
-  }
-
-  // respuesta.ok es true para los códigos 200 a 299
-  if (!respuesta.ok) {
-    throw new Error(datos?.mensaje || 'Ocurrió un error inesperado')
-  }
-  return datos
-}
-
-// Envía datos en formato JSON
-function enviarJson(ruta, metodo, cuerpo) {
-  return pedir(ruta, {
-    method: metodo,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cuerpo),
-  })
-}
+// La comunicación directa con el servidor está en servidor.js; lo de
+// "sin internet" está en la carpeta services/offline.
+import {
+  API_URL,
+  ejecutarAccion,
+  emailSesion,
+  guardarInventario,
+  guardarSesion,
+  inventarioActual,
+  servidor,
+  token,
+  cuandoVenzaLaSesion as registrarVencimiento,
+} from './servidor.js'
+import { estadoConexion } from './offline/conexion.js'
+import { claves, leerCache, guardarCache, aplicarLocal } from './offline/local.js'
+import { encolar, hayPendientes, descargarTodo, sincronizar } from './offline/sincronizar.js'
+import {
+  recordarCredenciales,
+  comprobarSinConexion,
+  olvidarCredenciales,
+} from './offline/credenciales.js'
 
 // ---------- Sesión ----------
 
-// Devuelve { token, usuario }. El token se guarda aquí mismo.
-export async function iniciarSesion(email, password) {
-  const respuesta = await enviarJson('/api/auth/login', 'POST', { email, password })
-  guardarToken(respuesta.token)
-  return respuesta.usuario
+export function hayToken() {
+  return Boolean(token())
 }
 
-// ¿Quién soy y qué inventarios puedo usar? (se llama al abrir la página)
-export function obtenerUsuarioActual() {
-  return pedir('/api/auth/yo')
+export function inventarioGuardado() {
+  return inventarioActual()
+}
+
+export function elegirInventario(id) {
+  guardarInventario(id)
+}
+
+// Cuando el servidor dice que la sesión ya no sirve: se olvida la sesión
+// y también la huella de la contraseña de este equipo (puede que se la
+// hayan cambiado), y App vuelve al login.
+export function cuandoVenzaLaSesion(funcion) {
+  registrarVencimiento((mensaje) => {
+    const email = emailSesion()
+    if (email) olvidarCredenciales(email)
+    guardarSesion(null, null)
+    funcion(mensaje)
+  })
+}
+
+// Inicia sesión. CON internet lo valida el servidor; SIN internet, la
+// huella guardada en este equipo (solo si esa persona ya entró antes con
+// internet aquí).
+export async function iniciarSesion(email, password) {
+  const correo = email.trim().toLowerCase()
+  try {
+    const respuesta = await servidor.login(correo, password)
+    guardarSesion(respuesta.token, respuesta.usuario.email)
+    await guardarCache(claves.usuario(respuesta.usuario.email), respuesta.usuario)
+    await recordarCredenciales(respuesta.usuario.email, password, respuesta.token)
+    // En segundo plano: enviar lo pendiente y descargar los datos
+    sincronizar()
+      .then(() => descargarTodo())
+      .catch(() => {})
+    return respuesta.usuario
+  } catch (error) {
+    if (!error.sinConexion) {
+      // Cuenta desactivada: también deja de entrar sin internet
+      if (error.estado === 403) olvidarCredenciales(correo)
+      throw error
+    }
+    const tokenGuardado = await comprobarSinConexion(correo, password)
+    if (!tokenGuardado) throw new Error('Correo o contraseña incorrectos', { cause: error })
+    const usuario = await leerCache(claves.usuario(correo))
+    if (!usuario) {
+      throw new Error('Sin conexión. No hay datos guardados de esta cuenta en este equipo.', {
+        cause: error,
+      })
+    }
+    guardarSesion(tokenGuardado, correo)
+    return usuario
+  }
 }
 
 export function cerrarSesion() {
-  guardarToken(null)
+  guardarSesion(null, null)
 }
 
-// ---------- Productos (del inventario elegido) ----------
+// ---------- Lecturas ----------
+//
+// Con internet y sin cambios pendientes: se piden al servidor y se guarda
+// la copia. Si no hay conexión (o hay cambios sin enviar, que solo están
+// en el equipo): se devuelve la copia guardada.
+async function leerConRespaldo(clave, pedirAlServidor) {
+  if (estadoConexion().enLinea && !(await hayPendientes())) {
+    try {
+      const datos = await pedirAlServidor()
+      await guardarCache(clave, datos)
+      return datos
+    } catch (error) {
+      if (!error.sinConexion) throw error
+    }
+  }
+  const guardado = await leerCache(clave)
+  if (guardado === undefined) {
+    throw new Error(
+      'Sin conexión: estos datos no están guardados en este equipo. Conéctate a internet para descargarlos.',
+    )
+  }
+  return guardado
+}
+
+// ¿Quién soy y qué empresas puedo usar?
+export async function obtenerUsuarioActual() {
+  if (estadoConexion().enLinea && !(await hayPendientes())) {
+    try {
+      const usuario = await servidor.yo()
+      // Sesiones de antes de la app sin internet no guardaban el correo
+      if (!emailSesion()) guardarSesion(token(), usuario.email)
+      await guardarCache(claves.usuario(usuario.email), usuario)
+      return usuario
+    } catch (error) {
+      if (!error.sinConexion) throw error
+    }
+  }
+  const usuario = emailSesion() ? await leerCache(claves.usuario(emailSesion())) : undefined
+  if (!usuario) throw new Error('Sin conexión y sin datos guardados. Conéctate a internet.')
+  return usuario
+}
 
 export function listarProductos() {
-  return pedir('/api/productos')
+  const id = inventarioActual()
+  return leerConRespaldo(claves.productos(id), () => servidor.productos(id))
 }
-
-// "formulario" es un FormData (permite enviar texto Y un archivo de imagen).
-// No ponemos Content-Type a mano: el navegador lo arma solo, con el
-// separador que necesita para mezclar texto y archivo.
-export function crearProducto(formulario) {
-  return pedir('/api/productos', { method: 'POST', body: formulario })
-}
-
-// Edita un objeto. Igual que crear, recibe un FormData (texto + imagen
-// opcional). Usa PUT porque se reemplazan los datos del objeto "id".
-export function actualizarProducto(id, formulario) {
-  return pedir(`/api/productos/${id}`, { method: 'PUT', body: formulario })
-}
-
-export function eliminarProducto(id) {
-  return pedir(`/api/productos/${id}`, { method: 'DELETE' })
-}
-
-// ---------- Movimientos (del inventario elegido) ----------
 
 export function listarMovimientos() {
-  return pedir('/api/movimientos')
+  const id = inventarioActual()
+  return leerConRespaldo(claves.movimientos(id), () => servidor.movimientos(id))
 }
-
-export function registrarMovimiento(datos) {
-  return enviarJson('/api/movimientos', 'POST', datos)
-}
-
-// ---------- Solo super administrador: empresas ----------
 
 export function listarInventarios() {
-  return pedir('/api/inventarios')
+  return leerConRespaldo(claves.inventarios, () => servidor.inventarios())
 }
-
-export function crearInventario(datos) {
-  return enviarJson('/api/inventarios', 'POST', datos)
-}
-
-export function actualizarInventario(id, datos) {
-  return enviarJson(`/api/inventarios/${id}`, 'PUT', datos)
-}
-
-export function eliminarInventario(id) {
-  return pedir(`/api/inventarios/${id}`, { method: 'DELETE' })
-}
-
-// ---------- Solo super administrador: usuarios ----------
 
 export function listarUsuarios() {
-  return pedir('/api/usuarios')
+  return leerConRespaldo(claves.usuarios, () => servidor.usuarios())
 }
 
 export function verUsuario(id) {
-  return pedir(`/api/usuarios/${id}`)
+  return leerConRespaldo(claves.detalleUsuario(id), () => servidor.usuario(id))
+}
+
+// ---------- Cambios ----------
+//
+// Con internet (y sin nada pendiente) se envían directo al servidor.
+// Sin internet: se aplican en el equipo y se guardan en la cola.
+async function escribir(accion) {
+  const completa = {
+    ...accion,
+    uuid: crypto.randomUUID(), // identificador único de esta acción
+    fecha: new Date().toISOString(), // cuándo pasó en realidad
+    email: emailSesion(), // quién la hizo
+  }
+
+  if (estadoConexion().enLinea && !(await hayPendientes())) {
+    try {
+      return await ejecutarAccion(completa, false)
+    } catch (error) {
+      if (!error.sinConexion) throw error
+      // Se cortó justo ahora: seguimos abajo, sin conexión
+    }
+  }
+
+  const usuario = await leerCache(claves.usuario(completa.email))
+  completa.empresa = usuario?.inventarios.find((e) => e.id === completa.inventarioId)?.nombre ?? null
+  completa.usuarioNombre = usuario?.nombre ?? completa.email
+  // Aplica el cambio en el equipo (y revisa las mismas reglas que el servidor)
+  const resultado = await aplicarLocal(completa, usuario)
+  await encolar(completa)
+  sincronizar() // por si la conexión ya volvió
+  return resultado
+}
+
+// Los formularios con foto llegan como FormData; para guardarlos en la
+// cola se pasan a un objeto normal { campo: valor } (la foto va como archivo)
+function aObjeto(formulario) {
+  return Object.fromEntries(formulario.entries())
+}
+
+export function crearProducto(formulario) {
+  return escribir({ tipo: 'crearProducto', inventarioId: inventarioActual(), datos: aObjeto(formulario) })
+}
+
+export function actualizarProducto(id, formulario) {
+  return escribir({
+    tipo: 'editarProducto',
+    inventarioId: inventarioActual(),
+    objetivoId: id,
+    datos: aObjeto(formulario),
+  })
+}
+
+export function eliminarProducto(id) {
+  return escribir({ tipo: 'eliminarProducto', inventarioId: inventarioActual(), objetivoId: id, datos: {} })
+}
+
+export function registrarMovimiento(datos) {
+  return escribir({ tipo: 'movimiento', inventarioId: inventarioActual(), datos })
+}
+
+export function crearInventario(datos) {
+  return escribir({ tipo: 'crearInventario', datos })
+}
+
+export function actualizarInventario(id, datos) {
+  return escribir({ tipo: 'editarInventario', objetivoId: id, datos })
+}
+
+export function eliminarInventario(id) {
+  return escribir({ tipo: 'eliminarInventario', objetivoId: id, datos: {} })
 }
 
 export function crearUsuario(datos) {
-  return enviarJson('/api/usuarios', 'POST', datos)
+  return escribir({ tipo: 'crearUsuario', datos })
 }
 
 export function actualizarUsuario(id, datos) {
-  return enviarJson(`/api/usuarios/${id}`, 'PUT', datos)
+  return escribir({ tipo: 'editarUsuario', objetivoId: id, datos })
 }
 
 export function cambiarContrasenaUsuario(id, password) {
-  return enviarJson(`/api/usuarios/${id}/password`, 'PUT', { password })
+  return escribir({ tipo: 'cambiarContrasena', objetivoId: id, datos: { password } })
 }
 
 export function eliminarUsuario(id) {
-  return pedir(`/api/usuarios/${id}`, { method: 'DELETE' })
+  return escribir({ tipo: 'eliminarUsuario', objetivoId: id, datos: {} })
 }
 
 // ---------- Imágenes ----------
-
-// En la base de datos solo se guarda un texto con la ubicación de la imagen:
-//  - En tu computador es una ruta ("uploads/123-ab.jpg"): la unimos con la
-//    dirección del servidor.
-//  - Al desplegar, las imágenes viven en Cloudinary y el texto ya es una
-//    dirección completa ("https://res.cloudinary.com/..."): se usa tal cual.
-// Si el objeto no tiene imagen, devuelve null.
+//
+// - En tu computador: ruta "uploads/123-ab.jpg" -> se une con el servidor.
+// - Publicado: dirección completa de Cloudinary -> tal cual.
+// - Foto tomada sin internet: texto "data:image/..." -> tal cual.
 export function urlImagen(ruta) {
   if (!ruta) return null
-  if (/^https?:\/\//.test(ruta)) return ruta
+  if (/^(https?:|data:)/.test(ruta)) return ruta
   return `${API_URL}/${ruta}`
 }

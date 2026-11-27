@@ -2,7 +2,7 @@
 // la ruta ya pasó por autenticar y soloSuperAdmin.
 const pool = require('../config/database')
 const { ErrorHttp } = require('../utils/errores')
-const { textoObligatorio, textoOpcional, leerId } = require('../utils/validar')
+const { textoObligatorio, textoOpcional, leerId, uuidOpcional } = require('../utils/validar')
 
 // ---------------------------------------------------------------------
 // GET /api/inventarios  ->  todos los inventarios, con cuántos objetos y
@@ -30,19 +30,42 @@ function leerDatos(cuerpo) {
 }
 
 // ---------------------------------------------------------------------
-// POST /api/inventarios  { nombre, descripcion }
+// POST /api/inventarios  { nombre, descripcion, uuid_cliente? }
+// uuid_cliente solo llega desde la app sin internet: si esa empresa ya se
+// había sincronizado, se devuelve la existente en vez de crear otra.
 // ---------------------------------------------------------------------
+async function buscarPorUuid(uuid) {
+  const [filas] = await pool.execute(
+    'SELECT id, nombre, descripcion, uuid_cliente FROM inventarios WHERE uuid_cliente = ?',
+    [uuid],
+  )
+  return filas[0] ?? null
+}
+
 async function crear(req, res) {
-  const { nombre, descripcion } = leerDatos(req.body || {})
+  const cuerpo = req.body || {}
+  const { nombre, descripcion } = leerDatos(cuerpo)
+  const uuid = uuidOpcional(cuerpo.uuid_cliente)
+
+  if (uuid) {
+    const existente = await buscarPorUuid(uuid)
+    if (existente) return res.status(200).json({ ...existente, repetido: true })
+  }
+
   try {
     const [resultado] = await pool.execute(
-      'INSERT INTO inventarios (nombre, descripcion) VALUES (?, ?)',
-      [nombre, descripcion],
+      'INSERT INTO inventarios (nombre, descripcion, uuid_cliente) VALUES (?, ?, ?)',
+      [nombre, descripcion, uuid],
     )
-    res.status(201).json({ id: resultado.insertId, nombre, descripcion })
+    res.status(201).json({ id: resultado.insertId, nombre, descripcion, uuid_cliente: uuid })
   } catch (error) {
+    // Llegó dos veces a la vez: si el uuid ya quedó guardado, devolvemos esa
+    if (uuid && error.code === 'ER_DUP_ENTRY') {
+      const existente = await buscarPorUuid(uuid)
+      if (existente) return res.status(200).json({ ...existente, repetido: true })
+    }
     if (error.code === 'ER_DUP_ENTRY') {
-      throw new ErrorHttp(409, `Ya existe un inventario llamado "${nombre}"`)
+      throw new ErrorHttp(409, `Ya existe un inventario llamado "${nombre}"`, 'NOMBRE_REPETIDO')
     }
     throw error
   }
@@ -60,11 +83,11 @@ async function actualizar(req, res) {
       [nombre, descripcion, id],
     )
     // affectedRows = cuántas filas encontró el WHERE. 0 = no existe.
-    if (resultado.affectedRows === 0) throw new ErrorHttp(404, 'El inventario no existe')
+    if (resultado.affectedRows === 0) throw new ErrorHttp(404, 'El inventario no existe', 'NO_EXISTE')
     res.json({ id, nombre, descripcion })
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      throw new ErrorHttp(409, `Ya existe un inventario llamado "${nombre}"`)
+      throw new ErrorHttp(409, `Ya existe un inventario llamado "${nombre}"`, 'NOMBRE_REPETIDO')
     }
     throw error
   }
@@ -87,7 +110,7 @@ async function eliminar(req, res) {
   )
   const { objetos, movimientos, existe } = filas[0]
 
-  if (!existe) throw new ErrorHttp(404, 'El inventario no existe')
+  if (!existe) throw new ErrorHttp(404, 'El inventario no existe', 'NO_EXISTE')
   if (objetos > 0 || movimientos > 0) {
     throw new ErrorHttp(
       409,

@@ -88,8 +88,13 @@ app.use((error, req, res, next) => {
   if (estado >= 400 && estado < 500) {
     // Los ErrorHttp traen un mensaje escrito para la persona (por ejemplo
     // "Ya existe un objeto llamado..."). Los demás usan uno general.
-    const mensaje = error instanceof ErrorHttp ? error.message : 'Petición inválida'
-    return res.status(estado).json({ mensaje })
+        if (error instanceof ErrorHttp) {
+      // Si trae un código para el programa, también lo enviamos
+      const cuerpo = { mensaje: error.message }
+      if (error.codigo) cuerpo.codigo = error.codigo
+      return res.status(estado).json(cuerpo)
+    }
+    return res.status(estado).json({ mensaje: 'Petición inválida' })
   }
 
   // Un ErrorHttp con código 5xx (por ejemplo 502 cuando Cloudinary no

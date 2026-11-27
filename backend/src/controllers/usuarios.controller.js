@@ -9,7 +9,7 @@
 //    que había. Un inventario que no aparece = sin acceso.
 const pool = require('../config/database')
 const { ErrorHttp } = require('../utils/errores')
-const { textoObligatorio, leerId } = require('../utils/validar')
+const { textoObligatorio, leerId, uuidOpcional } = require('../utils/validar')
 const { hashearContrasena } = require('../utils/sesion')
 const { MINIMO_CONTRASENA } = require('../utils/superAdmin')
 const { COLUMNAS_PERMISO } = require('../middlewares/auth')
@@ -90,7 +90,7 @@ async function buscarUsuario(id, bloquearSuper) {
     'SELECT id, nombre, email, es_super_admin, activo, created_at FROM usuarios WHERE id = ?',
     [id],
   )
-  if (filas.length === 0) throw new ErrorHttp(404, 'El usuario no existe')
+  if (filas.length === 0) throw new ErrorHttp(404, 'El usuario no existe', 'NO_EXISTE')
   if (bloquearSuper && filas[0].es_super_admin) {
     throw new ErrorHttp(403, 'El super administrador solo se cambia desde la configuración del servidor (.env)')
   }
@@ -128,7 +128,7 @@ async function permisosDe(usuarioId) {
 // Traduce el error de "correo repetido" a un mensaje claro
 function revisarDuplicado(error, email) {
   if (error.code === 'ER_DUP_ENTRY') {
-    throw new ErrorHttp(409, `Ya existe un usuario con el correo ${email}`)
+    throw new ErrorHttp(409, `Ya existe un usuario con el correo ${email}`, 'CORREO_REPETIDO')
   }
   // Si un inventario de la lista no existe, la llave foránea falla
   if (error.code === 'ER_NO_REFERENCED_ROW_2') {
@@ -158,11 +158,24 @@ async function ver(req, res) {
   res.json({ ...formatoUsuario(usuario), permisos: await permisosDe(usuario.id) })
 }
 
+// POST /api/usuarios  { nombre, email, password, permisos: [...], uuid_cliente? }
+// uuid_cliente solo llega desde la app sin internet: si ese usuario ya se
+// había sincronizado, se devuelve el existente en vez de crearlo otra vez.
 // ---------------------------------------------------------------------
-// POST /api/usuarios  { nombre, email, password, permisos: [...] }
-// ---------------------------------------------------------------------
+async function usuarioPorUuid(uuid) {
+  const [filas] = await pool.execute('SELECT id FROM usuarios WHERE uuid_cliente = ?', [uuid])
+  if (filas.length === 0) return null
+  const usuario = await buscarUsuario(filas[0].id, false)
+  return { ...formatoUsuario(usuario), permisos: await permisosDe(usuario.id), repetido: true }
+}
+
 async function crear(req, res) {
   const cuerpo = req.body || {}
+  const uuid = uuidOpcional(cuerpo.uuid_cliente)
+  if (uuid) {
+    const existente = await usuarioPorUuid(uuid)
+    if (existente) return res.status(200).json(existente)
+  }
   const nombre = textoObligatorio(cuerpo.nombre, 'nombre', 100)
   const email = leerEmail(cuerpo.email)
   const password = leerContrasena(cuerpo.password)
@@ -174,8 +187,8 @@ async function crear(req, res) {
     const id = await conTransaccion(async (conexion) => {
       // es_super_admin no se envía: siempre queda en FALSE (su valor por defecto)
       const [resultado] = await conexion.execute(
-        'INSERT INTO usuarios (nombre, email, password_hash) VALUES (?, ?, ?)',
-        [nombre, email, hash],
+        'INSERT INTO usuarios (nombre, email, password_hash, uuid_cliente) VALUES (?, ?, ?, ?)',
+        [nombre, email, hash, uuid],
       )
       await guardarPermisos(conexion, resultado.insertId, permisos)
       return resultado.insertId
@@ -183,7 +196,11 @@ async function crear(req, res) {
     const usuario = await buscarUsuario(id, false)
     res.status(201).json({ ...formatoUsuario(usuario), permisos: await permisosDe(id) })
   } catch (error) {
-    revisarDuplicado(error, email)
+        // Llegó dos veces a la vez: si el uuid ya quedó guardado, devolvemos ese
+    if (uuid && error.code === 'ER_DUP_ENTRY') {
+      const existente = await usuarioPorUuid(uuid)
+      if (existente) return res.status(200).json(existente)
+    }
   }
 }
 

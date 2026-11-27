@@ -95,7 +95,47 @@ function leerId(valor) {
   return Number(valor)
 }
 
+// ---------------------------------------------------------------------
+// VERSIÓN 2 (app sin internet)
+// ---------------------------------------------------------------------
+
+// Identificador que genera la app para cada cosa creada sin internet
+// (un UUID, ej. "3f2b8c1e-9a7d-4e21-b6f0-1c2d3e4f5a6b"). Sirve para no
+// crear dos veces lo mismo si la sincronización se repite.
+// Si no se envía, devuelve null (acción hecha en línea).
+function uuidOpcional(valor) {
+  if (valor === undefined || valor === null || valor === '') return null
+  if (typeof valor !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor)) {
+    throw new ErrorHttp(400, 'El identificador de sincronización no es válido')
+  }
+  return valor.toLowerCase()
+}
+
+// Cuándo pasó la acción en la vida real (la app sin internet la envía al
+// sincronizar). Si no se envía, devuelve null (= ahora).
+// No se acepta una fecha "del futuro": se permiten 5 minutos de margen
+// por si el reloj del computador está un poco adelantado.
+function fechaOpcional(valor) {
+  if (valor === undefined || valor === null || valor === '') return null
+  const fecha = typeof valor === 'string' ? new Date(valor) : null
+  if (!fecha || Number.isNaN(fecha.getTime())) {
+    throw new ErrorHttp(400, 'La fecha no es válida')
+  }
+  if (fecha.getTime() > Date.now() + 5 * 60 * 1000) {
+    throw new ErrorHttp(400, 'La fecha no puede estar en el futuro (revisa la hora del computador)')
+  }
+  return fecha
+}
+
+// Verdadero solo si llega true (JSON) o "true" (formulario)
+function booleanoOpcional(valor) {
+  return valor === true || valor === 'true'
+}
+
 module.exports = {
+  uuidOpcional,
+  fechaOpcional,
+  booleanoOpcional,
   textoObligatorio,
   textoOpcional,
   enteroPositivo,

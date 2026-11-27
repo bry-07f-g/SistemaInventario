@@ -45,7 +45,13 @@ activo BOOLEAN NOT NULL DEFAULT TRUE,
 -- Sube en 1 cada vez que el super admin le cambia la contraseña o lo
 -- desactiva. Las sesiones abiertas guardan este número; si ya no
 -- coincide, la sesión se cierra sola (así se "expulsa" al usuario).
-version_sesion  INT NOT NULL DEFAULT 0,
+version_sesion INT NOT NULL DEFAULT 0,
+
+-- (Versión 2.1) Identificador que genera la app cuando crea el usuario
+-- SIN internet; evita crearlo dos veces al sincronizar.
+
+
+uuid_cliente    CHAR(36) NULL UNIQUE,
 
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -59,9 +65,12 @@ CREATE TABLE IF NOT EXISTS inventarios (
   id            INT AUTO_INCREMENT PRIMARY KEY,
 
 -- Nombre de la empresa / inventario. No se repite.
-nombre        VARCHAR(100) NOT NULL UNIQUE,
 
-  descripcion   TEXT NULL,
+nombre VARCHAR(100) NOT NULL UNIQUE, descripcion TEXT NULL,
+
+-- (Versión 2.1) Igual que en usuarios: creado sin internet.
+
+uuid_cliente  CHAR(36) NULL UNIQUE,
 
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -116,6 +125,11 @@ descripcion TEXT NULL,
 cantidad INT NOT NULL DEFAULT 0,
 cantidad_minima INT NOT NULL DEFAULT 0,
 imagen VARCHAR(255) NULL,
+
+-- (Versión 2.1) Sube en 1 cada vez que se EDITA el objeto. Sirve para
+-- notar si alguien editó sin internet un objeto que otra persona
+-- cambió mientras tanto.
+version_datos INT NOT NULL DEFAULT 0,
 
 -- Identificador que genera la app de escritorio cuando crea el objeto
 -- SIN internet. Al sincronizar, sirve para saber "este es el mismo
@@ -182,6 +196,8 @@ registrado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
 
 -- Igual que en productos: evita registrar dos veces el mismo
 -- movimiento si la sincronización se repite.
+
+
 uuid_cliente     CHAR(36) NULL UNIQUE,
 
   CONSTRAINT chk_movimientos_cantidad CHECK (cantidad > 0),

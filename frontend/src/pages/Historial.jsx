@@ -1,8 +1,13 @@
 import { useState, useSyncExternalStore } from 'react'
 import HistorialMovimientos from '../components/HistorialMovimientos.jsx'
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx'
+import Paginador from '../components/Paginador.jsx'
+import { usePaginacion } from '../hooks/usePaginacion.js'
 import { cancelarEnvio, confirmarEnvio } from '../services/api.js'
 import { estadoConexion, suscribir } from '../services/offline/conexion.js'
+
+// Cuántos movimientos se ven por página (así la tabla no necesita scroll)
+const POR_PAGINA = 10
 
 // Página "Historial". Además de mostrar la tabla, aquí se resuelven los
 // despachos PENDIENTES: los que se hicieron sin conexión y, al
@@ -21,6 +26,9 @@ function Historial({ movimientos, permisos, recargar }) {
 
   const puedeDespachar = Boolean(permisos?.despachar)
   const pendientes = movimientos.filter((m) => m.estado === 'pendiente')
+  
+  // La tabla muestra solo los movimientos de la página actual
+  const paginacion = usePaginacion(movimientos, POR_PAGINA)
 
   async function confirmar(movimiento) {
     setMensaje(null)
@@ -86,7 +94,7 @@ function Historial({ movimientos, permisos, recargar }) {
       )}
 
       <HistorialMovimientos
-        movimientos={movimientos}
+        movimientos={paginacion.visibles}
         // Las acciones solo se muestran a quien puede despachar
         acciones={
           puedeDespachar
@@ -100,6 +108,14 @@ function Historial({ movimientos, permisos, recargar }) {
         }
       />
 
+      <Paginador
+        pagina={paginacion.pagina}
+        totalPaginas={paginacion.totalPaginas}
+        total={paginacion.total}
+        desde={paginacion.desde}
+        hasta={paginacion.hasta}
+        onCambiar={paginacion.setPagina}
+      />
       {porCancelar && (
         <ModalConfirmacion
           titulo="¿Cancelar este envío?"

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { estadoConexion, suscribir } from '../services/offline/conexion.js'
+import Campo from './Campo.jsx'
+import { useErrores } from '../hooks/useErrores.js'
 import {
   corregir,
   descartar,
@@ -63,44 +65,46 @@ function FormularioCorreccion({ item, onGuardar, onCerrar }) {
   const [valores, setValores] = useState(() =>
     Object.fromEntries(campos.map(([campo]) => [campo, String(item.datos[campo] ?? '')])),
   )
-  const [error, setError] = useState(null)
+  const { errores, mostrar, quitar, formulario } = useErrores()
 
   function alEnviar(evento) {
     evento.preventDefault()
     const cambios = {}
+    const nuevos = {}
     for (const [campo, etiqueta, tipo] of campos) {
       const valor = valores[campo].trim()
-      if (!valor) return setError(`Escribe ${etiqueta.toLowerCase()}.`)
-      if (tipo === 'number') {
+      if (!valor) {
+        nuevos[campo] = `Escribe ${etiqueta.toLowerCase()}.`
+      } else if (tipo === 'number') {
         const numero = Number(valor)
         const minimo = item.tipo === 'movimiento' ? 1 : 0
         if (!Number.isInteger(numero) || numero < minimo) {
-          return setError(`La cantidad debe ser un número entero de ${minimo} o más.`)
+          nuevos[campo] = `La cantidad debe ser un número entero de ${minimo} o más.`
         }
         cambios[campo] = numero
       } else {
         cambios[campo] = valor
       }
     }
-    onGuardar(cambios)
+    if (mostrar(nuevos)) onGuardar(cambios)
   }
 
   return (
-    <form className="correccion" onSubmit={alEnviar} noValidate>
+    <form className="correccion" onSubmit={alEnviar} ref={formulario} noValidate>
       {campos.map(([campo, etiqueta, tipo]) => (
-        <div className="campo" key={campo}>
-          <label htmlFor={`corregir-${item.orden}-${campo}`}>{etiqueta}</label>
+        <Campo etiqueta={etiqueta} error={errores[campo]} key={campo}>
           <input
-            id={`corregir-${item.orden}-${campo}`}
             type={tipo}
             min={tipo === 'number' ? 0 : undefined}
             value={valores[campo]}
-            onChange={(evento) => setValores({ ...valores, [campo]: evento.target.value })}
+            onChange={(evento) => {
+              setValores({ ...valores, [campo]: evento.target.value })
+              quitar(campo)
+            }}
           />
-        </div>
+        </Campo>
       ))}
-      {error && <p className="mensaje mensaje--error">{error}</p>}
-      <div className="pendientes__acciones">
+        <div className="pendientes__acciones">
         <button type="submit" className="boton boton--principal">
           Guardar y reintentar
         </button>

@@ -13,7 +13,10 @@ function Header({ usuario, inventarioId, onCambiarInventario, puedeMover, onSali
     <header className="header">
       {/* Fila de arriba: saludo, quién soy y botón de salir */}
       <div className="header__fila">
-        <h1 className="header__saludo">Bienvenido a Forage</h1>
+                {/* El saludo lleva el nombre de quien inició sesión */}
+        <h1 className="header__saludo">
+          Bienvenido a Forage, <span className="header__nombre">{usuario.nombre}</span>
+        </h1>
         <div className="header__usuario">
           <span>
             {usuario.nombre}
@@ -58,8 +61,7 @@ function Header({ usuario, inventarioId, onCambiarInventario, puedeMover, onSali
               </>
             )}
 
-            {/* Pantallas solo del super administrador (con otro estilo,
-                para distinguirlas de las del inventario) */}
+            {/* Pantallas solo del super administrador */}
             {usuario.esSuperAdmin && (
               <>
                 <NavLink to="/usuarios" className="header__link header__link--admin">

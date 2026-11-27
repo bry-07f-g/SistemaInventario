@@ -3,6 +3,8 @@ import BarraBusqueda from '../components/BarraBusqueda.jsx'
 import FormularioUsuario from '../components/FormularioUsuario.jsx'
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx'
 import NombreResaltado from '../components/NombreResaltado.jsx'
+import Paginador from '../components/Paginador.jsx'
+import { usePaginacion } from '../hooks/usePaginacion.js'
 import {
   actualizarUsuario,
   cambiarContrasenaUsuario,
@@ -13,6 +15,10 @@ import {
   verUsuario,
 } from '../services/api.js'
 import { filtrarPorNombre } from '../utils/inventario.js'
+import { errorDeCampo } from '../utils/validar.js'
+
+// Cuántos usuarios se ven por página (así la lista no necesita scroll)
+const POR_PAGINA = 5
 
 // Pantalla "Usuarios" (solo super administrador): la lista de usuarios,
 // como la del inventario, para crear, editar, desactivar, cambiar la
@@ -26,9 +32,10 @@ function Usuarios() {
   const [busqueda, setBusqueda] = useState('')
 
   // Qué formulario está abierto:
-  //   null            -> ninguno
-  //   'nuevo'         -> crear usuario (arriba de la lista)
-  //   { usuario }     -> editar ese usuario (dentro de su fila)
+  //   null            -> ninguno (se ve la lista)
+  //   'nuevo'         -> crear usuario
+  //   { usuario }     -> editar ese usuario
+  // Mientras hay un formulario abierto, la lista y el buscador se ocultan.
   const [formulario, setFormulario] = useState(null)
 
   // Usuario esperando confirmación para eliminar (null = modal cerrado)
@@ -53,16 +60,19 @@ function Usuarios() {
     cargar()
   }, [cargar])
 
-  const visibles = filtrarPorNombre(usuarios, busqueda)
+  const encontrados = filtrarPorNombre(usuarios, busqueda)
+  const paginacion = usePaginacion(encontrados, POR_PAGINA)
+
+  // Al buscar se vuelve a la página 1
+  function buscar(texto) {
+    setBusqueda(texto)
+    paginacion.setPagina(1)
+  }
   const activos = usuarios.filter((u) => u.activo).length
 
   // "Editar": primero pide al backend el usuario CON sus permisos
   async function abrirEdicion(usuario) {
     setMensaje(null)
-    if (formulario?.usuario?.id === usuario.id) {
-      setFormulario(null) // si ya estaba abierto, lo cierra
-      return
-    }
     try {
       setFormulario({ usuario: await verUsuario(usuario.id) })
     } catch (fallo) {
@@ -70,7 +80,8 @@ function Usuarios() {
     }
   }
 
-  // Guardar (crear o editar). Devuelve true si salió bien.
+  // Guardar (crear o editar). Devuelve true si salió bien, { campo: mensaje }
+  // si el error es de un campo (correo repetido) o false si es general.
   async function guardar(datos) {
     const editando = formulario !== 'nuevo'
     try {
@@ -84,7 +95,9 @@ function Usuarios() {
       })
       return true
     } catch (fallo) {
-      // Por ejemplo "Ya existe un usuario con el correo ..."
+      // "Ya existe un usuario con el correo ..." va debajo del campo Correo
+      const deCampo = errorDeCampo(fallo)
+      if (deCampo) return deCampo
       setMensaje({ tipo: 'error', texto: fallo.message })
       return false
     }
@@ -139,15 +152,18 @@ function Usuarios() {
           className="boton boton--principal"
           onClick={() => {
             setMensaje(null)
-            setFormulario(formulario === 'nuevo' ? null : 'nuevo')
+            // Con un formulario abierto, el botón lo cierra
+            setFormulario(formulario ? null : 'nuevo')
           }}
         >
-          {formulario === 'nuevo' ? 'Cerrar' : 'Nuevo usuario'}
+          {formulario ? 'Cerrar' : 'Nuevo usuario'}
         </button>
       </div>
 
       {mensaje && <p className={`mensaje mensaje--${mensaje.tipo}`}>{mensaje.texto}</p>}
 
+      {/* Con un formulario abierto solo se ve el formulario: la lista
+          vuelve al guardar, cancelar o cerrar */}
       {formulario === 'nuevo' && (
         <FormularioUsuario
           usuario={null}
@@ -157,80 +173,94 @@ function Usuarios() {
         />
       )}
 
-      <div className="busqueda">
-        <BarraBusqueda valor={busqueda} onCambio={setBusqueda} etiqueta="Buscar usuario" />
-      </div>
+      {formulario?.usuario && (
+        <FormularioUsuario
+          // key: si se abre otro usuario, el formulario se crea de nuevo
+          key={formulario.usuario.id}
+          usuario={formulario.usuario}
+          inventarios={inventarios}
+          onGuardar={guardar}
+          onCambiarContrasena={cambiarContrasena}
+          onCancelar={() => setFormulario(null)}
+        />
+      )}
 
-      {visibles.length === 0 ? (
-        <p>Ningún usuario coincide con &quot;{busqueda.trim()}&quot;.</p>
-      ) : (
-        <ul className="lista-productos">
-          {visibles.map((u) => (
-            <li key={u.id} className="producto">
-              <div className="producto__fila">
-                <div className="usuario__datos">
-                  <p className="producto__nombre">
-                    <NombreResaltado nombre={u.nombre} busqueda={busqueda} />
-                  </p>
-                  <p className="texto-suave">{u.email}</p>
-                </div>
+      {!formulario && (
+        <>
+          <div className="busqueda">
+            <BarraBusqueda valor={busqueda} onCambio={buscar} etiqueta="Buscar usuario" />
+          </div>
 
-                {/* Etiquetas: rol, estado y a cuántas empresas tiene acceso */}
-                <div className="usuario__etiquetas">
-                  {u.esSuperAdmin ? (
-                    <span className="insignia">Super administrador</span>
-                  ) : (
-                    <span className={`etiqueta ${u.activo ? 'etiqueta--entrada' : 'etiqueta--cancelado'}`}>
-                      {u.activo ? 'Activo' : 'Desactivado'}
-                    </span>
-                  )}
-                  <span className="etiqueta etiqueta--salida">
-                    {u.esSuperAdmin
-                      ? 'Todas las empresas'
-                      : `${u.totalInventarios} ${u.totalInventarios === 1 ? 'empresa' : 'empresas'}`}
-                  </span>
-                </div>
+          {encontrados.length === 0 ? (
+            <p>Ningún usuario coincide con &quot;{busqueda.trim()}&quot;.</p>
+          ) : (
+            <ul className="lista-productos">
+              {paginacion.visibles.map((u) => (
+                <li key={u.id} className="producto">
+                  <div className="producto__fila">
+                    <div className="usuario__datos">
+                      <p className="producto__nombre">
+                        <NombreResaltado nombre={u.nombre} busqueda={busqueda} />
+                      </p>
+                      <p className="texto-suave">{u.email}</p>
+                    </div>
 
-                <div className="producto__acciones">
-                  {/* Al super admin no se le toca desde aquí: sus datos
+                    {/* Etiquetas: rol, estado y a cuántas empresas tiene acceso */}
+                    <div className="usuario__etiquetas">
+                      {u.esSuperAdmin ? (
+                        <span className="insignia">Super administrador</span>
+                      ) : (
+                        <span
+                          className={`etiqueta ${u.activo ? 'etiqueta--entrada' : 'etiqueta--cancelado'}`}
+                        >
+                          {u.activo ? 'Activo' : 'Desactivado'}
+                        </span>
+                      )}
+                      <span className="etiqueta etiqueta--salida">
+                        {u.esSuperAdmin
+                          ? 'Todas las empresas'
+                          : `${u.totalInventarios} ${u.totalInventarios === 1 ? 'empresa' : 'empresas'}`}
+                      </span>
+                    </div>
+
+                    <div className="producto__acciones">
+                      {/* Al super admin no se le toca desde aquí: sus datos
                       viven en la configuración del servidor (.env) */}
-                  {u.esSuperAdmin ? (
-                    <small className="texto-suave">Se cambia desde el servidor</small>
-                  ) : (
-                    <>
-                      <button type="button" className="boton" onClick={() => abrirEdicion(u)}>
-                        {formulario?.usuario?.id === u.id ? 'Cerrar' : 'Ver / editar'}
-                      </button>
-                      <button
-                        type="button"
-                        className="boton boton--peligro"
-                        onClick={() => {
-                          setMensaje(null)
-                          setPorEliminar(u)
-                        }}
-                      >
-                        Eliminar
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+                      {u.esSuperAdmin ? (
+                        <small className="texto-suave">Se cambia desde el servidor</small>
+                      ) : (
+                        <>
+                          <button type="button" className="boton" onClick={() => abrirEdicion(u)}>
+                            Ver / editar
+                          </button>
+                          <button
+                            type="button"
+                            className="boton boton--peligro"
+                            onClick={() => {
+                              setMensaje(null)
+                              setPorEliminar(u)
+                            }}
+                          >
+                            Eliminar
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
 
-              {/* Formulario de edición dentro de la fila del usuario */}
-              {formulario?.usuario?.id === u.id && (
-                <FormularioUsuario
-                  // key: si se abre otro usuario, el formulario se crea de nuevo
-                  key={u.id}
-                  usuario={formulario.usuario}
-                  inventarios={inventarios}
-                  onGuardar={guardar}
-                  onCambiarContrasena={cambiarContrasena}
-                  onCancelar={() => setFormulario(null)}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
+          <Paginador
+            pagina={paginacion.pagina}
+            totalPaginas={paginacion.totalPaginas}
+            total={paginacion.total}
+            desde={paginacion.desde}
+            hasta={paginacion.hasta}
+            onCambiar={paginacion.setPagina}
+          />
+        </>
       )}
 
       {porEliminar && (

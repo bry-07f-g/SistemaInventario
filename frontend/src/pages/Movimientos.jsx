@@ -2,6 +2,7 @@ import { useState } from 'react'
 import FormularioIngresar from '../components/FormularioIngresar.jsx'
 import FormularioDespachar from '../components/FormularioDespachar.jsx'
 import { crearProducto, registrarMovimiento } from '../services/api.js'
+import { errorDeCampo } from '../utils/validar.js'
 
 // Esta página es el "coordinador": decide qué formulario mostrar y le habla
 // al backend. Los formularios solo recogen lo que escribe la persona y se lo
@@ -55,11 +56,9 @@ function Movimientos({ productos, recargar, permisos }) {
           (p) => p.nombre.toLowerCase() === nombre.toLowerCase(),
         )
         if (repetido) {
-          setMensaje({
-            tipo: 'error',
-            texto: `Ya existe un objeto llamado "${nombre}". Usa "Objeto existente" para sumarle unidades.`,
-          })
-          return false
+          return {
+            nombre: `Ya existe un objeto llamado "${nombre}". Usa "Objeto existente" para sumarle unidades.`,
+          }
         }
 
         // FormData permite enviar texto Y un archivo en la misma petición
@@ -103,7 +102,10 @@ function Movimientos({ productos, recargar, permisos }) {
       return true
     } catch (error) {
       // Aquí llegan los mensajes del backend (nombre repetido, imagen muy
-      // pesada, sin conexión...). Se muestran tal cual, en rojo.
+      // pesada, sin conexión...). Si es de un campo, va debajo de ese campo;
+      // si no, arriba en el recuadro rojo.
+      const deCampo = errorDeCampo(error)
+      if (deCampo) return deCampo
       setMensaje({ tipo: 'error', texto: error.message })
       return false
     }
@@ -136,6 +138,9 @@ function Movimientos({ productos, recargar, permisos }) {
       })
       return true
     } catch (error) {
+      // "No hay suficientes productos..." va debajo de la cantidad
+      const deCampo = errorDeCampo(error)
+      if (deCampo) return deCampo
       setMensaje({ tipo: 'error', texto: error.message })
       return false
     }

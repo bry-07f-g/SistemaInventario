@@ -1,11 +1,15 @@
 import { useState } from 'react'
+import Campo from './Campo.jsx'
 import { urlImagen } from '../services/api.js'
+import { useErrores } from '../hooks/useErrores.js'
+import { entero, obligatorio } from '../utils/validar.js'
 
 // Formulario para editar UN objeto. Se muestra dentro de la fila del objeto.
 // Recibe por props:
 //  - producto: el objeto que se edita (sus datos actuales llenan los campos)
-//  - onGuardar: función de la página que envía los cambios al backend.
-//    Es asíncrona y devuelve true si salió bien.
+//  - onGuardar: función de la página que envía los cambios al backend. Es
+//    asíncrona y devuelve true si salió bien, { campo: mensaje } si el error
+//    es de un campo (nombre repetido) o false si es un error general.
 //  - onCancelar: función que cierra el formulario sin guardar nada.
 //
 // OJO: aquí NO se edita la cantidad. La cantidad solo cambia con
@@ -15,9 +19,7 @@ function FormularioEditar({ producto, onGuardar, onCancelar }) {
   // (useState solo usa el valor inicial la primera vez que se dibuja.)
   const [nombre, setNombre] = useState(producto.nombre)
   const [descripcion, setDescripcion] = useState(producto.descripcion || '')
-  const [cantidadMinima, setCantidadMinima] = useState(
-    String(producto.cantidad_minima),
-  )
+  const [cantidadMinima, setCantidadMinima] = useState(String(producto.cantidad_minima))
 
   // Imagen nueva (opcional) y su vista previa
   const [archivo, setArchivo] = useState(null)
@@ -25,6 +27,9 @@ function FormularioEditar({ producto, onGuardar, onCancelar }) {
 
   // true mientras se espera al servidor (desactiva el botón)
   const [guardando, setGuardando] = useState(false)
+
+  // Errores en rojo debajo de cada campo
+  const { errores, mostrar, quitar, formulario } = useErrores()
 
   function cambiarImagen(evento) {
     const elegido = evento.target.files[0]
@@ -37,6 +42,16 @@ function FormularioEditar({ producto, onGuardar, onCancelar }) {
   async function enviar(evento) {
     evento.preventDefault()
 
+    const valido = mostrar({
+      nombre: obligatorio(nombre, 'Escribe el nombre del objeto.'),
+      cantidadMinima: entero(
+        cantidadMinima,
+        0,
+        'La cantidad mínima debe ser un número entero de 0 o más.',
+      ),
+    })
+    if (!valido) return
+
     // FormData permite mandar texto Y un archivo en la misma petición.
     const datos = new FormData()
     datos.append('nombre', nombre)
@@ -47,77 +62,74 @@ function FormularioEditar({ producto, onGuardar, onCancelar }) {
     if (archivo) datos.append('imagen', archivo)
 
     setGuardando(true)
-    await onGuardar(producto.id, datos)
+    const resultado = await onGuardar(producto.id, datos)
     setGuardando(false)
     // Si salió bien, la página cierra este formulario (ya no existirá);
-    // si falló, queda abierto para corregir.
+    // si el error es de un campo, se muestra debajo de él.
+    if (resultado && resultado !== true) mostrar(resultado)
   }
 
   // Imagen que se muestra: la nueva si hay, si no la actual
   const imagenMostrada = vistaPrevia || urlImagen(producto.imagen)
 
   return (
-    <form className="formulario formulario--editar" onSubmit={enviar}>
-      <label className="campo">
-        <span>Nombre</span>
+    <form
+      className="formulario formulario--columnas formulario--editar"
+      onSubmit={enviar}
+      ref={formulario}
+      noValidate
+    >
+      <Campo etiqueta="Nombre" error={errores.nombre}>
         <input
           type="text"
           value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
+          onChange={(e) => {
+            setNombre(e.target.value)
+            quitar('nombre')
+          }}
           maxLength={100}
-          required
         />
-      </label>
+      </Campo>
 
-      <label className="campo">
-        <span>Descripción (opcional)</span>
-        <textarea
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-        />
-      </label>
-
-      <label className="campo">
-        <span>Cantidad mínima</span>
+      <Campo
+        etiqueta="Cantidad mínima"
+        error={errores.cantidadMinima}
+        ayuda='Con esta cantidad o menos se marca "próximo a agotar". Usa 0 para no tener aviso.'
+      >
         <input
           type="number"
           value={cantidadMinima}
-          onChange={(e) => setCantidadMinima(e.target.value)}
+          onChange={(e) => {
+            setCantidadMinima(e.target.value)
+            quitar('cantidadMinima')
+          }}
           min="0"
           step="1"
-          required
         />
-        <small className="campo__ayuda">
-          Con esta cantidad o menos se marca &quot;próximo a agotar&quot;. Usa 0
-          para no tener aviso.
-        </small>
-      </label>
+      </Campo>
 
-      <label className="campo">
-        <span>Imagen (opcional)</span>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          onChange={cambiarImagen}
-        />
-        {imagenMostrada && (
-          <img
-            className="vista-previa"
-            src={imagenMostrada}
-            alt="Imagen del objeto"
+      <Campo etiqueta="Descripción (opcional)">
+        <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={2} />
+      </Campo>
+
+      <div className="campo-imagen">
+        <Campo etiqueta="Imagen (opcional)" ayuda="Si eliges una imagen nueva, reemplaza a la actual.">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={cambiarImagen}
           />
+        </Campo>
+        {imagenMostrada && (
+          <img className="vista-previa" src={imagenMostrada} alt="Imagen del objeto" />
         )}
-        <small className="campo__ayuda">
-          Si eliges una imagen nueva, reemplaza a la actual.
-        </small>
-      </label>
+      </div>
 
-      <p className="texto-suave">
-        La cantidad ({producto.cantidad}) no se edita aquí: cambia al ingresar
-        o despachar.
+      <p className="texto-suave campo--completo">
+        La cantidad ({producto.cantidad}) no se edita aquí: cambia al ingresar o despachar.
       </p>
 
-      <div className="formulario__botones">
+      <div className="formulario__botones campo--completo">
         <button className="boton boton--principal" type="submit" disabled={guardando}>
           {guardando ? 'Guardando...' : 'Guardar cambios'}
         </button>

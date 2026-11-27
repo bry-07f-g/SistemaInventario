@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import NombreResaltado from './NombreResaltado.jsx'
 import { filtrarPorNombre, textoStock } from '../utils/inventario.js'
 
@@ -11,17 +11,23 @@ import { filtrarPorNombre, textoStock } from '../utils/inventario.js'
 //  - productos: la lista de objetos
 //  - valor: id del objeto elegido, como texto ('' = ninguno). Lo guarda el
 //    formulario que usa este componente.
+
 //  - onElegir: función que se llama con el id elegido, o con '' cuando la
 //    persona empieza a escribir otra vez (así nunca queda elegido un objeto
 //    distinto al que se ve en el campo).
+
 //  - bloquearAgotados: si es true, los objetos con 0 unidades se ven pero
 //    no se pueden elegir (lo usa el despacho).
+//  - error: mensaje en rojo debajo del campo (por ejemplo "Elige un objeto")
+//  - ayuda: texto gris debajo del campo (por ejemplo "Disponibles: 5")
 function SelectorObjeto({
   productos,
   valor,
   onElegir,
   bloquearAgotados = false,
   etiqueta = 'Objeto',
+  error,
+  ayuda,
 }) {
   // useId crea un identificador único para unir la etiqueta con el campo
   const id = useId()
@@ -47,14 +53,6 @@ function SelectorObjeto({
   // ven todos los objetos para poder desplazarse por ellos.
   const filtrando = escrito !== null && escrito.trim() !== ''
   const visibles = filtrando ? filtrarPorNombre(productos, escrito) : productos
-
-  // Mientras no haya un objeto elegido, el campo avisa (con el mensaje
-  // nativo del navegador) que falta elegir uno al enviar el formulario.
-  useEffect(() => {
-    campo.current?.setCustomValidity(
-      valor === '' ? 'Elige un objeto de la lista' : '',
-    )
-  }, [valor])
 
   function puedeElegirse(producto) {
     return !(bloquearAgotados && producto.cantidad === 0)
@@ -102,7 +100,7 @@ function SelectorObjeto({
   }
 
   return (
-    <div className="campo">
+    <div className={error ? 'campo campo--error' : 'campo'}>
       <label htmlFor={id}>{etiqueta}</label>
 
       <div className="combo">
@@ -114,6 +112,7 @@ function SelectorObjeto({
           aria-expanded={abierto}
           aria-controls={`${id}-lista`}
           aria-autocomplete="list"
+          aria-invalid={error ? true : undefined}
           autoComplete="off"
           value={textoCampo}
           placeholder="Escribe o elige un objeto..."
@@ -188,6 +187,8 @@ function SelectorObjeto({
           </ul>
         )}
       </div>
+      {ayuda && <small className="campo__ayuda">{ayuda}</small>}
+      {error && <small className="campo__error">{error}</small>}
     </div>
   )
 }

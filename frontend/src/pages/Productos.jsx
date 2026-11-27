@@ -5,12 +5,18 @@ import BarraBusqueda from '../components/BarraBusqueda.jsx'
 import NombreResaltado from '../components/NombreResaltado.jsx'
 import FormularioEditar from '../components/FormularioEditar.jsx'
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx'
+import Paginador from '../components/Paginador.jsx'
+import { usePaginacion } from '../hooks/usePaginacion.js'
 import {
   actualizarProducto,
   eliminarProducto,
   urlImagen,
 } from '../services/api.js'
 import { estadoStock, filtrarPorNombre } from '../utils/inventario.js'
+import { errorDeCampo } from '../utils/validar.js'
+
+// Cuántos objetos se ven por página (así la lista no necesita scroll)
+const POR_PAGINA = 4
 
 //  - permisos: qué puede hacer el usuario en este inventario. Los botones
 //    Editar y Eliminar solo aparecen si tiene ese permiso. (Aunque alguien
@@ -38,7 +44,17 @@ function Productos({ productos, recargar, permisos }) {
 
   // La lista que realmente se ve: solo los objetos cuyo nombre contiene lo
   // buscado. Si no hay nada escrito, son todos.
-  const visibles = filtrarPorNombre(productos, busqueda)
+    const encontrados = filtrarPorNombre(productos, busqueda)
+
+  // De los encontrados, solo los de la página actual
+  const paginacion = usePaginacion(encontrados, POR_PAGINA)
+  const visibles = paginacion.visibles
+
+  // Al buscar se vuelve a la página 1 (los resultados empiezan ahí)
+  function buscar(texto) {
+    setBusqueda(texto)
+    paginacion.setPagina(1)
+  }
 
   // "Ver": abre el detalle de un producto, o lo cierra si ya estaba abierto.
   function alternarDetalle(id) {
@@ -61,8 +77,10 @@ function Productos({ productos, recargar, permisos }) {
       setMensaje({ tipo: 'exito', texto: 'Cambios guardados.' })
       return true
     } catch (error) {
-      // Por ejemplo: "Ya existe un objeto llamado ...". El formulario
-      // queda abierto para corregirlo.
+      // Por ejemplo: "Ya existe un objeto llamado ...": va debajo del
+      // campo Nombre. El formulario queda abierto para corregirlo.
+      const deCampo = errorDeCampo(error)
+      if (deCampo) return deCampo
       setMensaje({ tipo: 'error', texto: error.message })
       return false
     }
@@ -106,7 +124,7 @@ async function confirmarEliminacion() {
       {/* La barra de búsqueda solo tiene sentido si hay objetos */}
       {productos.length > 0 && (
         <div className="busqueda">
-          <BarraBusqueda valor={busqueda} onCambio={setBusqueda} />
+          <BarraBusqueda valor={busqueda} onCambio={buscar} />
           {/* Cuando se está buscando, decimos cuántos coinciden */}
           {busqueda.trim() !== '' && (
             <small className="campo__ayuda">
@@ -215,6 +233,15 @@ async function confirmarEliminacion() {
         </ul>
       )}
 
+      {/* Paginador: solo aparece si hay más de una página */}
+      <Paginador
+        pagina={paginacion.pagina}
+        totalPaginas={paginacion.totalPaginas}
+        total={paginacion.total}
+        desde={paginacion.desde}
+        hasta={paginacion.hasta}
+        onCambiar={paginacion.setPagina}
+      />
             {/* Modal de confirmación: solo existe mientras hay un objeto por eliminar */}
       {porEliminar && (
         <ModalConfirmacion

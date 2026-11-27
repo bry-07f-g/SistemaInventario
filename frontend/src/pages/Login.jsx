@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import Campo from '../components/Campo.jsx'
+import { useErrores } from '../hooks/useErrores.js'
 import { iniciarSesion } from '../services/api.js'
+import { correo, obligatorio } from '../utils/validar.js'
 
 // Pantalla de inicio de sesión: es lo primero que se ve si no hay sesión.
 // Recibe por props:
@@ -10,10 +13,17 @@ function Login({ onEntrar, aviso }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
+  // Errores en rojo debajo de cada campo (correo vacío, contraseña vacía...)
+  const { errores, mostrar, quitar, formulario } = useErrores()
 
   async function enviar(evento) {
     evento.preventDefault() // que el navegador no recargue la página
     setError(null)
+    const valido = mostrar({
+      email: correo(email),
+      password: obligatorio(password, 'Escribe la contraseña.'),
+    })
+    if (!valido) return
     setEnviando(true)
     try {
       const usuario = await iniciarSesion(email.trim(), password)
@@ -28,7 +38,7 @@ function Login({ onEntrar, aviso }) {
 
   return (
     <div className="login">
-      <form className="login__tarjeta formulario" onSubmit={enviar}>
+      <form className="login__tarjeta formulario" onSubmit={enviar} ref={formulario} noValidate>
         <img className="login__logo" src="/Forage-logo.png" alt="" />
         <h1 className="login__titulo">Sistema de Inventario</h1>
         <p className="texto-suave">Inicia sesión para continuar</p>
@@ -37,28 +47,30 @@ function Login({ onEntrar, aviso }) {
         {aviso && !error && <p className="mensaje mensaje--error">{aviso}</p>}
         {error && <p className="mensaje mensaje--error">{error}</p>}
 
-        <label className="campo">
-          <span>Correo</span>
+        <Campo etiqueta="Correo" error={errores.email}>
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              quitar('email')
+            }}
             autoComplete="username"
-            required
             autoFocus
           />
-        </label>
+        </Campo>
 
-        <label className="campo">
-          <span>Contraseña</span>
+        <Campo etiqueta="Contraseña" error={errores.password}>
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              quitar('password')
+            }}
             autoComplete="current-password"
-            required
           />
-        </label>
+        </Campo>
 
         <button type="submit" className="boton boton--principal" disabled={enviando}>
           {enviando ? 'Ingresando...' : 'Ingresar'}

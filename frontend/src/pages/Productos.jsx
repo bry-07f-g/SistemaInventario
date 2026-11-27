@@ -128,7 +128,7 @@ async function confirmarEliminacion() {
           {/* Cuando se está buscando, decimos cuántos coinciden */}
           {busqueda.trim() !== '' && (
             <small className="campo__ayuda">
-              {visibles.length} de {productos.length} objetos
+              {encontrados.length} de {productos.length} objetos
             </small>
           )}
         </div>
@@ -138,7 +138,7 @@ async function confirmarEliminacion() {
           o hay resultados para mostrar */}
       {productos.length === 0 ? (
         <p>No hay objetos en el inventario.</p>
-      ) : visibles.length === 0 ? (
+      ) : encontrados.length === 0 ? (
         <p>Ningún objeto coincide con &quot;{busqueda.trim()}&quot;.</p>
       ) : (
         <ul className="lista-productos">

@@ -124,6 +124,22 @@ function App() {
       })
   }, [])
 
+    // Cuando termina una sincronización (la app sin internet envió sus
+  // cambios), se vuelve a pedir todo para ver el estado real del servidor
+  useEffect(() => {
+    function alSincronizar() {
+      if (!hayToken()) return
+      obtenerUsuarioActual()
+        .then((datos) => {
+          entrar(datos)
+          return cargarDatos()
+        })
+        .catch(() => {})
+    }
+    window.addEventListener('inventario:sincronizado', alSincronizar)
+    return () => window.removeEventListener('inventario:sincronizado', alSincronizar)
+  }, [entrar, cargarDatos])
+  
   // Cada vez que cambia el inventario elegido, se cargan sus datos
   useEffect(() => {
     if (inventarioId === null) return

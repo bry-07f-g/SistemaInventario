@@ -916,3 +916,157 @@ body::before {
 .pantalla-centrada {
   color: #ffffff;
 }
+
+.pantalla-centrada {
+  color: #ffffff;
+}
+
+/* ===================================================================
+   APP SIN INTERNET: indicador de conexión y cambios pendientes
+   =================================================================== */
+
+/* Recuadro fijo abajo a la derecha, encima de todo (también del login) */
+.conexion {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 90; /* debajo de los modales (100) */
+  min-width: 170px;
+  padding: 10px 14px;
+  background: var(--color-fondo);
+  border-radius: 12px;
+  border-left: 5px solid var(--color-exito);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  font-size: 0.85rem;
+}
+
+.conexion p {
+  margin: 0;
+}
+
+.conexion__estado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+/* Puntico de color al lado del texto */
+.conexion__punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-exito);
+}
+
+.conexion__detalle {
+  margin-top: 4px !important;
+}
+
+.conexion__detalle--error {
+  color: var(--color-peligro);
+  font-weight: 700;
+}
+
+.conexion__boton {
+  margin-top: 8px;
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+/* Colores según el estado */
+.conexion--sin-red {
+  border-left-color: var(--color-peligro);
+}
+.conexion--sin-red .conexion__punto {
+  background: var(--color-peligro);
+}
+.conexion--sincronizando {
+  border-left-color: var(--color-aviso);
+}
+.conexion--sincronizando .conexion__punto {
+  background: var(--color-aviso);
+}
+
+/* En celular: más pequeño y sin tapar tanto */
+@media (max-width: 600px) {
+  .conexion {
+    right: 8px;
+    bottom: 8px;
+    min-width: 0;
+    padding: 8px 10px;
+  }
+}
+
+/* ----- Modal de cambios pendientes ----- */
+.modal--ancho {
+  max-width: 620px;
+  max-height: 85vh;
+  overflow-y: auto; /* si hay muchos cambios, la ventana se desplaza */
+}
+
+.modal--ancho .modal__titulo {
+  color: var(--color-principal);
+}
+
+.pendientes__resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mensaje--aviso {
+  background: var(--color-aviso);
+  color: var(--color-aviso-texto);
+}
+
+.pendientes__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pendientes__item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-fondo-pagina);
+  border-left: 4px solid var(--color-aviso);
+}
+
+.pendientes__item--error {
+  border-left-color: var(--color-peligro);
+}
+
+.pendientes__fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.pendientes__meta {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+}
+
+.pendientes__error {
+  margin: 8px 0 0;
+  color: var(--color-peligro);
+  font-size: 0.9rem;
+}
+
+.pendientes__acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.etiqueta--conflicto {
+  background: var(--color-peligro-suave);
+  color: var(--color-peligro);
+}
